@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Sources{% endblock %}
+{% block body %}
+<h1>Sources &amp; partners</h1>
+{% if new_key %}
+<div class="card">
+  <strong>Partner key for {{ new_key.source }}</strong> — copy it now; it will not be shown again.
+  <p class="key">{{ new_key.key }}</p>
+  <p class="muted">The partner sends its full inventory to <code>POST /v1/partner/feed</code> with header <code>Authorization: Bearer &lt;key&gt;</code>, as feed JSON (docs/partner-feed.md) or CSV (<code>Content-Type: text/csv</code>).</p>
+</div>
+{% endif %}
+
+{% for s in sources %}
+<div class="card">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <strong>{{ s.name }}</strong> <span class="muted">{{ s.id }}</span>
+    <span class="pill">{{ s.kind }}</span>
+    {% if s.images_licensed %}<span class="pill ok">photos licensed</span>{% endif %}
+    {% if not s.active %}<span class="pill warn">paused</span>{% endif %}
+    <span class="muted">{{ s.listings }} active listings</span>
+  </div>
+  {% if s.last_run_at %}<div class="muted">Last run {{ s.last_run_at.strftime("%Y-%m-%d %H:%M") }}: {{ s.last_run_report }}</div>{% endif %}
+
+  {% if s.kind == "crawl" %}
+  <p>{% if s.terms_reviewed_at %}<span class="pill ok">terms allow crawling</span> reviewed by {{ s.terms_reviewed_by }}: {{ s.terms_note }}
+     {% else %}<span class="pill warn">not crawled</span> nobody has confirmed this site's terms allow it{% endif %}</p>
+  <details><summary>Review terms and crawl settings</summary>
+    <form method="post" action="/admin/sources/{{ s.id }}/terms">
+      <label>Start URLs (sitemaps or listing pages, one per line, https only)</label>
+      <textarea name="start_urls" rows="3">{{ s.crawl_start_urls | join("\n") }}</textarea>
+      <label>Your name</label><input name="reviewer" required value="{{ s.terms_reviewed_by or '' }}">
+      <label>What the terms say (quote or link the clause)</label><textarea name="note" rows="3" required>{{ s.terms_note or "" }}</textarea>
+      <label style="display:flex;gap:8px;align-items:center;font-weight:400"><input type="checkbox" name="allowed" value="true" style="width:auto"{% if s.terms_reviewed_at %} checked{% endif %}> I read this site's terms and robots.txt, and they allow this crawl</label>
+      <button style="margin-top:10px">Save</button>
+    </form>
+    <p class="muted">Run with <code>python -m mpf.cli crawl {{ s.id }}</code> (e.g. nightly from cron).</p>
+  </details>
+  {% endif %}
+
+  <div class="actions" style="margin-top:10px">
+    <form method="post" action="/admin/sources/{{ s.id }}/upload" enctype="multipart/form-data" class="actions">
+      <input type="file" name="file" accept=".csv,.json" required style="width:auto">
+      <button class="secondary">Upload inventory (CSV or JSON)</button>
+    </form>
+    <form method="post" action="/admin/sources/{{ s.id }}/active"><button class="secondary">{{ "Pause" if s.active else "Resume" }}</button></form>
+  </div>
+</div>
+{% endfor %}
+
+<div class="card">
+  <h2 style="margin-top:0">Add a source</h2>
+  <form method="post" action="/admin/sources">
+    <div class="grid">
+      <div><label>ID (a-z, 0-9, -)</label><input name="id" pattern="[a-z0-9-]{3,40}" required></div>
+      <div><label>Name</label><input name="name" required></div>
+      <div><label>Kind</label><select name="kind"><option value="partner_feed">Partner (agency, developer, seller)</option><option value="crawl">Website to crawl</option></select></div>
+      <div><label>Contact email</label><input name="contact_email" type="email"></div>
+    </div>
+    <label style="display:flex;gap:8px;align-items:center;font-weight:400"><input type="checkbox" name="images_licensed" value="true" style="width:auto"> This source licenses its photos to us</label>
+    <label style="display:flex;gap:8px;align-items:center;font-weight:400"><input type="checkbox" name="partner_terms" value="true" style="width:auto"> The partner accepted the partner terms (docs/legal/partner-terms.md)</label>
+    <button style="margin-top:10px">Add</button>
+  </form>
+</div>
+{% endblock %}

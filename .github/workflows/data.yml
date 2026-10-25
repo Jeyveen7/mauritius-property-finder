@@ -1,0 +1,95 @@
+# Daily data build. Runs free on GitHub Actions and publishes to GitHub Pages:
+#   <pages>/data/meta.json, properties.json.gz, localities.json.gz   (the apps download these)
+#   <pages>/                                                        (the web app for iPhone)
+#   <pages>/state/state.sql.gz                                      (listing history for the next run)
+# Nobody runs a server. Repository settings → Pages → Source: "GitHub Actions".
+# Optional repository variable MPF_CONTACT (email or project URL) enables area photos and crawling.
+name: data
+
+on:
+  schedule:
+    - cron: "0 1 * * *"   # 05:00 in Mauritius
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["data/**", "backend/**", ".github/workflows/data.yml"]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: data
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      MPF_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      PGPASSWORD: postgres
+      MPF_CONTACT: ${{ vars.MPF_CONTACT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        working-directory: backend
+        run: pip install -e .
+
+      - name: Restore listing history from the last published run
+        id: pages
+        uses: actions/configure-pages@v5
+      - name: Load state
+        run: |
+          if curl -fsSL "${{ steps.pages.outputs.base_url }}/state/state.sql.gz" -o state.sql.gz; then
+            gunzip -c state.sql.gz | psql -h localhost -U postgres -q -v ON_ERROR_STOP=1
+            echo "restored previous state"
+          else
+            echo "no previous state: starting fresh"
+          fi
+
+      - name: Migrate, seed, import, export
+        working-directory: backend
+        run: |
+          python -m mpf.cli migrate
+          python -m mpf.cli seed
+          if [ -n "$MPF_CONTACT" ]; then python -m mpf.cli area-photos || true; fi
+          python -m mpf.cli purge
+          python -m mpf.cli build --sources ../data/sources.toml --out ../site/data
+
+      - name: Save state (listings and history only; no user data exists server-side)
+        run: |
+          mkdir -p site/state
+          pg_dump -h localhost -U postgres --clean --if-exists --no-owner \
+            --exclude-table-data='app_user' --exclude-table-data='auth_token' --exclude-table-data='phone_otp' \
+            --exclude-table-data='saved_*' --exclude-table-data='alert' --exclude-table-data='lead' \
+            --exclude-table-data='report' --exclude-table-data='user_post' --exclude-table-data='photo' \
+            | gzip -9 > site/state/state.sql.gz
+
+      - name: Add the web app
+        run: cp -r backend/web/. site/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Duplicates{% endblock %}
+{% macro money(minor, cur) %}{{ cur }} {{ "{:,.0f}".format(minor / 100) }}{% endmacro %}
+{% block body %}
+<h1>Possible duplicates</h1>
+<p class="muted">Each pair scored between 0.60 and 0.85: likely the same place, but not certain enough to merge automatically. Same means the two adverts are for one plot or home.</p>
+{% for i in items %}
+<div class="card">
+  <div class="muted">Score {{ i.score }} · {{ i.locality or "" }}</div>
+  <table>
+    <tr><th></th><th>New advert</th><th>Existing property</th></tr>
+    <tr><td>Title</td><td>{{ i.new_title }}</td><td>{{ i.old_title }}</td></tr>
+    <tr><td>Source</td><td>{{ i.new_source }}{% if i.new_url %} · <a href="{{ i.new_url }}" rel="noopener" target="_blank">open</a>{% endif %}</td>
+        <td>{{ i.old_source }}{% if i.old_url %} · <a href="{{ i.old_url }}" rel="noopener" target="_blank">open</a>{% endif %}</td></tr>
+    <tr><td>Price</td><td>{{ money(i.new_price, i.new_currency) }}</td><td>{{ money(i.old_price, i.old_currency) }}</td></tr>
+    <tr><td>Plot / floor m²</td><td>{{ i.new_plot or "–" }} / {{ i.new_floor or "–" }}</td><td>{{ i.old_plot or "–" }} / {{ i.old_floor or "–" }}</td></tr>
+  </table>
+  <form method="post" action="/admin/reviews/{{ i.id }}" class="actions" style="margin-top:10px">
+    <button name="decision" value="merge">Same place: merge</button>
+    <button name="decision" value="separate" class="secondary">Different places</button>
+  </form>
+</div>
+{% else %}
+<p>Nothing to check.</p>
+{% endfor %}
+{% endblock %}

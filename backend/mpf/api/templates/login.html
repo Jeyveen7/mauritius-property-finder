@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Admin sign-in</title>
+<style>body{font:15px system-ui,sans-serif;background:#F6F7F5;display:grid;place-items:center;min-height:100vh;margin:0}
+form{background:#fff;padding:24px;border-radius:12px;border:1px solid #DDE3E1;width:min(360px,90vw)}
+input{width:100%;padding:9px;margin:8px 0 14px;border:1px solid #DDE3E1;border-radius:8px;font:inherit;box-sizing:border-box}
+button{background:#0E6B66;color:#fff;border:0;border-radius:8px;padding:9px 16px;font:inherit;font-weight:600}</style></head>
+<body>
+{% if not enabled %}
+<p>Admin is turned off. Set <code>MPF_ADMIN_TOKEN</code> on the server to enable it.</p>
+{% else %}
+<form method="post" action="/admin/login">
+  <h1 style="margin-top:0;font-size:20px">Admin sign-in</h1>
+  {% if error %}<p style="color:#9A3F0E">That token is not right.</p>{% endif %}
+  <label for="token">Admin token</label>
+  <input id="token" name="token" type="password" autocomplete="current-password" required>
+  <button>Sign in</button>
+</form>
+{% endif %}
+</body>
+</html>

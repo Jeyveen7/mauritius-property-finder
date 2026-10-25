@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block body %}
+<h1>Hidden after reports</h1>
+<p class="muted">Properties hide automatically after enough users report them. Restore wrong reports; remove sold, fake or scam listings.</p>
+{% for p in items %}
+<div class="card">
+  <strong>{{ p.title or "Untitled" }}</strong> <span class="muted">{{ p.locality or "" }}</span><br>
+  <span class="pill warn">{{ p.reports }} reports</span> <span class="muted">{{ p.reasons or "" }}</span>
+  <form method="post" action="/admin/reports/{{ p.id }}" class="actions" style="margin-top:10px">
+    <button name="action" value="restore" class="secondary">Restore</button>
+    <button name="action" value="remove">Remove</button>
+  </form>
+</div>
+{% else %}
+<p>Nothing hidden.</p>
+{% endfor %}
+{% endblock %}

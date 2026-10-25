@@ -1,0 +1,15 @@
+{
+  "feed_version": 1,
+  "source": { "id": "sample-portal-b", "name": "Sample portal B (fictional test data)" },
+  "listings": [
+    { "ref": "B-9001", "type": "land", "title": "Residential plot close to the beach, Pereybère", "locality": "Pereybère",
+      "price": { "amount": "5950000", "currency": "MUR" }, "plot": { "value": 12, "unit": "perch" } },
+    { "ref": "B-9002", "type": "house", "title": "3-bed family house with a garden", "locality": "Quatre Bornes",
+      "price": { "amount": "11200000", "currency": "MUR" }, "floor_m2": 182, "plot": { "value": 422, "unit": "m2" },
+      "bedrooms": 3 },
+    { "ref": "B-9003", "type": "land", "title": "One arpent of agricultural land", "locality": "Moka",
+      "price": { "amount": "12500000", "currency": "MUR" }, "plot": { "value": 1, "unit": "arpent" } },
+    { "ref": "B-9004", "type": "land", "title": "Flat plot in gated morcellement, Grand Baie", "locality": "Grand Baie",
+      "price": { "amount": "10400000", "currency": "MUR" }, "plot": { "value": 1266, "unit": "m2" } }
+  ]
+}

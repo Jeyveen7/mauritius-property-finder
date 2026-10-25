@@ -1,0 +1,33 @@
+[project]
+name = "mpf"
+version = "0.1.0"
+description = "Mauritius property finder: ingestion pipeline and API"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "psycopg[binary,pool]>=3.2",
+  "pydantic>=2.8",
+  "httpx>=0.27",
+  "anthropic>=2.0",
+  "pillow>=11",
+  "imagehash>=4.3",
+  "python-multipart>=0.0.9",
+  "jinja2>=3.1",
+  "google-auth>=2.30",
+  "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# migrations/ and seed/ are read from the source tree, so install in editable mode.
+[tool.setuptools.packages.find]
+include = ["mpf*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

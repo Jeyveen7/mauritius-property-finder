@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E6B66">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Property finder">
+<title>Property finder · Mauritius</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <section id="explore" class="tab active">
+    <header class="search">
+      <div class="row">
+        <label class="field"><span class="sr" data-t="search_hint"></span>
+          <input id="q" type="search" autocomplete="off" data-tp="search_hint"></label>
+        <button id="filtersBtn" class="square" aria-label="Filters">⚙︎<span id="filterCount" class="badge" hidden></span></button>
+      </div>
+      <div class="chips" id="quickChips"></div>
+    </header>
+    <div id="map"></div>
+    <div id="list" hidden></div>
+    <div class="floating">
+      <button id="saveSearch" class="round" data-ta="save_search">🔔</button>
+      <button id="toggleView" class="pill-dark"></button>
+    </div>
+    <div id="preview" hidden></div>
+  </section>
+
+  <section id="saved" class="tab"><div class="page" id="savedPage"></div></section>
+  <section id="post" class="tab"><div class="page" id="postPage"></div></section>
+
+  <nav class="tabs">
+    <button data-tab="explore" class="on"><span>📍</span><span data-t="nav_explore"></span></button>
+    <button data-tab="saved"><span>♡</span><span data-t="nav_saved"></span></button>
+    <button data-tab="post"><span>＋</span><span data-t="nav_add_post"></span></button>
+  </nav>
+</div>
+
+<dialog id="sheet"></dialog>
+<dialog id="detail"></dialog>
+<div id="toast" role="status" hidden></div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="i18n.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

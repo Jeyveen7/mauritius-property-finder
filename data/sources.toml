@@ -1,0 +1,36 @@
+# Where the listings come from. The scheduled build (.github/workflows/data.yml) reads
+# this file every day; nothing else needs to run. Edit it on GitHub to add a source.
+#
+# [[partner]]  An agency, developer or seller that agreed to docs/legal/partner-terms.md.
+#              Either `feed_url` (their own JSON feed, docs/partner-feed.md) or `file`
+#              (a CSV or JSON they sent you, committed under data/partners/).
+#
+# [[crawl]]    A website whose terms you have read and that allow indexing. The build
+#              refuses to crawl unless `terms_reviewed_by` and `terms_note` are filled in.
+
+# Fictional sample data so the app has something to show. Remove once real partners join.
+[[partner]]
+id = "sample-portal-a"
+name = "Sample portal A (fictional test data)"
+file = "../backend/seed/sample_feeds/portal_a.json"
+images_licensed = false
+
+[[partner]]
+id = "sample-portal-b"
+name = "Sample portal B (fictional test data)"
+file = "../backend/seed/sample_feeds/portal_b.json"
+images_licensed = false
+
+# [[partner]]
+# id = "agency-x"
+# name = "Agency X"
+# feed_url = "https://agency-x.mu/feed.json"
+# images_licensed = true
+# terms_accepted = "2026-11-02 by email from jane@agency-x.mu"
+
+# [[crawl]]
+# id = "example-portal"
+# name = "Example portal"
+# start_urls = ["https://example.mu/sitemap-listings.xml"]
+# terms_reviewed_by = "Your name"
+# terms_note = "Written permission from contact@example.mu on 2026-11-02 to index facts with links back."

@@ -1,0 +1,234 @@
+package mu.propertyfinder.ui.explore
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.activity.ComponentActivity
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import mu.propertyfinder.R
+import mu.propertyfinder.domain.Converter
+import mu.propertyfinder.domain.Format
+import mu.propertyfinder.ui.ChoiceChips
+import mu.propertyfinder.ui.PropertyCardRow
+
+/** One ExploreViewModel per activity, so Saved can apply a search to it. */
+@Composable
+fun exploreViewModel(): ExploreViewModel = viewModel(LocalContext.current as ComponentActivity)
+
+@Composable
+fun ExploreScreen(onOpen: (String) -> Unit) {
+    val vm = exploreViewModel()
+    val s by vm.state.collectAsStateWithLifecycle()
+    val converter = remember(s.fx) { Converter(s.fx) }
+    var sheetOpen by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    // Alerts for saved searches arrive as notifications; Android 13+ asks for permission.
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    val saveSearch = {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        vm.saveSearch()
+    }
+    val savedMessage = stringResource(R.string.search_saved)
+    LaunchedEffect(s.searchSavedAt) {
+        if (s.searchSavedAt > 0) Toast.makeText(context, savedMessage, Toast.LENGTH_LONG).show()
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        if (s.view == ExploreView.MAP) {
+            PropertyMap(
+                items = s.mapItems,
+                label = { item -> item.price?.let { Format.moneyShort(converter.convert(it, s.display.currency)) }.orEmpty() },
+                onViewport = vm::onViewport,
+                onPin = { vm.select(it) },
+                onStack = vm::openStack,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            LazyColumn(
+                Modifier.fillMaxSize().padding(top = 128.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 4.dp, 16.dp, 96.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            if (s.stackIds != null) stringResource(R.string.stack_title, s.list.size)
+                            else stringResource(R.string.n_properties, s.count),
+                            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (s.stackIds != null) IconButton(onClick = vm::closeStack) { Icon(Icons.Filled.Close, null) }
+                        else OutlinedButton(onClick = { saveSearch() }) {
+                            Icon(Icons.Filled.NotificationsNone, null)
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.save_search))
+                        }
+                    }
+                    ChoiceChips(
+                        listOf("new" to stringResource(R.string.sort_new), "price" to stringResource(R.string.sort_price),
+                               "value" to stringResource(R.string.sort_value)),
+                        s.sort, vm::setSort,
+                    )
+                }
+                items(s.list, key = { it.id }) { card ->
+                    PropertyCardRow(card, s.display, converter) { onOpen(card.id) }
+                }
+            }
+        }
+
+        SearchHeader(
+            query = s.filters.q, onQuery = vm::setQuery, activeFilters = s.filters.activeCount,
+            onFilters = { sheetOpen = true },
+            quickChips = {
+                val f = s.filters
+                listOf("land" to R.string.type_land, "apartment" to R.string.type_apartment, "house" to R.string.type_house)
+                    .forEach { (t, label) ->
+                        FilterChip(selected = f.type == t, onClick = { vm.setFilters(f.copy(type = if (f.type == t) null else t)) },
+                                   label = { Text(stringResource(label)) })
+                    }
+                FilterChip(selected = f.foreign, onClick = { vm.setFilters(f.copy(foreign = !f.foreign)) },
+                           label = { Text(stringResource(R.string.foreigners_can_buy)) })
+            },
+            opaque = s.view == ExploreView.LIST,
+        )
+
+        Column(Modifier.align(Alignment.BottomCenter).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally,
+               verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (s.view == ExploreView.MAP && s.loaded && s.count == 0) {
+                Surface(shape = RoundedCornerShape(16.dp), shadowElevation = 4.dp) {
+                    Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(stringResource(R.string.no_results))
+                        OutlinedButton(onClick = { vm.setFilters(Filters()) }) { Text(stringResource(R.string.clear_filters)) }
+                    }
+                }
+            }
+            if (s.view == ExploreView.MAP) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(shape = RoundedCornerShape(50), shadowElevation = 6.dp) {
+                        IconButton(onClick = { saveSearch() }) {
+                            Icon(Icons.Filled.NotificationsNone, contentDescription = stringResource(R.string.save_search))
+                        }
+                    }
+                    ExtendedFloatingActionButton(
+                        onClick = { vm.setView(ExploreView.LIST) },
+                        icon = { Icon(Icons.AutoMirrored.Filled.List, null) },
+                        text = { Text(stringResource(R.string.list_count, s.count)) },
+                        containerColor = Color(0xFF12201F), contentColor = Color.White,
+                    )
+                }
+                s.selected?.let { card ->
+                    Box {
+                        PropertyCardRow(card, s.display, converter) { onOpen(card.id) }
+                        IconButton(onClick = vm::clearSelection, modifier = Modifier.align(Alignment.TopEnd)) {
+                            Icon(Icons.Filled.Close, contentDescription = null)
+                        }
+                    }
+                }
+            } else {
+                ExtendedFloatingActionButton(
+                    onClick = { vm.setView(ExploreView.MAP) },
+                    icon = { Icon(Icons.Filled.Map, null) }, text = { Text(stringResource(R.string.map)) },
+                    containerColor = Color(0xFF12201F), contentColor = Color.White,
+                )
+            }
+        }
+    }
+
+    if (sheetOpen) {
+        FilterSheet(state = s, vm = vm, onDismiss = { sheetOpen = false })
+    }
+}
+
+@Composable
+private fun SearchHeader(
+    query: String,
+    onQuery: (String) -> Unit,
+    activeFilters: Int,
+    onFilters: () -> Unit,
+    quickChips: @Composable () -> Unit,
+    opaque: Boolean,
+) {
+    Surface(color = if (opaque) MaterialTheme.colorScheme.background else Color.Transparent) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+               verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Surface(shape = RoundedCornerShape(14.dp), shadowElevation = 3.dp, modifier = Modifier.weight(1f)) {
+                    TextField(
+                        value = query, onValueChange = onQuery, singleLine = true,
+                        leadingIcon = { Icon(Icons.Filled.Search, null) },
+                        placeholder = { Text(stringResource(R.string.search_hint)) },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.White, unfocusedContainerColor = Color.White,
+                            focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                Surface(shape = RoundedCornerShape(14.dp), shadowElevation = 3.dp) {
+                    IconButton(onClick = onFilters) {
+                        BadgedBox(badge = {
+                            if (activeFilters > 0) androidx.compose.material3.Badge { Text("$activeFilters") }
+                        }) { Icon(Icons.Filled.Tune, contentDescription = stringResource(R.string.filters)) }
+                    }
+                }
+            }
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                quickChips()
+            }
+        }
+    }
+}

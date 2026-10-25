@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block body %}
+<div class="grid">
+  <a class="card" href="/admin/reviews" style="text-decoration:none;color:inherit"><div class="muted">Possible duplicates to check</div><div style="font-size:28px;font-weight:800">{{ counts.reviews }}</div></a>
+  <a class="card" href="/admin/reports" style="text-decoration:none;color:inherit"><div class="muted">Hidden after reports</div><div style="font-size:28px;font-weight:800">{{ counts.hidden }}</div></a>
+  <div class="card"><div class="muted">Properties on the map</div><div style="font-size:28px;font-weight:800">{{ counts.active }}</div></div>
+  <div class="card"><div class="muted">Unverified (shared posts)</div><div style="font-size:28px;font-weight:800">{{ counts.unverified }}</div></div>
+  <a class="card" href="/admin/sources" style="text-decoration:none;color:inherit"><div class="muted">Sources</div><div style="font-size:28px;font-weight:800">{{ counts.sources }}</div></a>
+</div>
+{% endblock %}

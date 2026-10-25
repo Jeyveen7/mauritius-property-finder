@@ -1,0 +1,32 @@
+name,district,region,lat,lon,aliases
+Cap Malheureux,Rivière du Rempart,North,-19.990,57.620,
+Pereybère,Rivière du Rempart,North,-20.015,57.595,
+Grand Baie,Rivière du Rempart,North,-20.025,57.580,Grand Bay|La Salette
+Goodlands,Rivière du Rempart,North,-20.040,57.645,
+Poudre d'Or,Rivière du Rempart,North,-20.055,57.680,
+Trou aux Biches,Pamplemousses,North,-20.040,57.550,
+Pointe aux Piments,Pamplemousses,North,-20.070,57.530,
+Pamplemousses,Pamplemousses,North,-20.105,57.575,
+Port Louis,Port Louis,West,-20.165,57.505,
+Albion,Black River,West,-20.215,57.410,
+Flic en Flac,Black River,West,-20.275,57.385,Flic-en-Flac
+Tamarin,Black River,West,-20.330,57.385,Tamarind
+Rivière Noire,Black River,West,-20.370,57.390,Black River|Grande Rivière Noire
+Chamarel,Black River,West,-20.430,57.390,
+La Gaulette,Black River,West,-20.425,57.365,
+Le Morne,Black River,West,-20.450,57.330,
+Quatre Bornes,Plaines Wilhems,Centre,-20.265,57.475,
+Rose Hill,Plaines Wilhems,Centre,-20.240,57.470,Beau Bassin-Rose Hill
+Ebène,Plaines Wilhems,Centre,-20.245,57.490,Ebene Cybercity
+Vacoas,Plaines Wilhems,Centre,-20.300,57.480,Vacoas-Phoenix
+Curepipe,Plaines Wilhems,Centre,-20.315,57.520,
+Moka,Moka,Centre,-20.225,57.545,
+Côte d'Or,Moka,Centre,-20.255,57.570,Cote d'Or Smart City
+Flacq,Flacq,East,-20.190,57.715,Centre de Flacq
+Belle Mare,Flacq,East,-20.200,57.755,
+Trou d'Eau Douce,Flacq,East,-20.240,57.775,
+Mahébourg,Grand Port,South,-20.400,57.690,
+Pointe d'Esny,Grand Port,South,-20.420,57.710,
+Blue Bay,Grand Port,South,-20.440,57.705,
+Souillac,Savanne,South,-20.510,57.520,
+Bel Ombre,Savanne,South,-20.480,57.410,

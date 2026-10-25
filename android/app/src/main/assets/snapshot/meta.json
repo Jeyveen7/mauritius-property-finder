@@ -1,0 +1,22 @@
+{
+ "format": 1,
+ "version": "0f58b9b8091a3d0e",
+ "generated_at": "2026-10-25T05:32:30+00:00",
+ "count": 17,
+ "rules": {
+  "label": "Finance Act 2026 (assented 12 Aug 2026)",
+  "registration_duty_pct": "5"
+ },
+ "fx": {
+  "day": "2026-10-01",
+  "mur_per_unit": {
+   "EUR": "52.500000",
+   "USD": "45.500000"
+  }
+ },
+ "assumed_mortgage_rate_pct": "6.0",
+ "attribution": [
+  "Map data and places \u00a9 OpenStreetMap contributors (ODbL)",
+  "Area photos: Wikimedia Commons contributors, licences as credited"
+ ]
+}

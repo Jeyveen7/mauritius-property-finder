@@ -1,0 +1,12 @@
+{
+  "effective_from": "2026-08-12",
+  "label": "Finance Act 2026 (assented 12 Aug 2026)",
+  "legal_reviewed_by": null,
+  "rules": {
+    "open_schemes": ["PDS", "SMART_CITY", "IRS", "RES", "IHS"],
+    "g2": { "min_price_mur": 6000000, "min_floors_above_ground": 2 },
+    "residency_min_usd": 375000,
+    "permit_holder_min_usd": 500000,
+    "registration_duty_pct": 5
+  }
+}
