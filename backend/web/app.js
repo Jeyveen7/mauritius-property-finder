@@ -265,32 +265,35 @@ function renderChrome() {
   $(".search").classList.toggle("opaque", state.view === "list");
   $("#preview").hidden = state.view !== "map" || $("#preview").hidden;
   $("#toggleView").textContent = state.view === "map" ? t(f.projects ? "list_projects" : "list_n", { n: state.count }) : t("map");
-  $("#saveSearch").hidden = f.projects;
-  const active = [f.type, f.regions.size, f.band !== null, f.beds, f.foreign].filter(Boolean).length;
-  $("#filterCount").hidden = !active; $("#filterCount").textContent = active;
-  $("#quickChips").innerHTML = ["land", "apartment", "house"].map((ty) =>
-    `<button class="chip ${f.type === ty ? "on" : ""}" data-type="${ty}">${t(ty)}</button>`).join("") +
-    `<button class="chip ${f.foreign ? "on" : ""}" data-foreign>${t("foreigners")}</button>` +
-    (state.data?.projects.length ? `<button class="chip ${f.projects ? "on" : ""}" data-projects>${t("projects")}</button>` : "");
+  const searching = hasSearch();
+  $("#saveSearch").hidden = f.projects || !searching;
+  // One way in, as in Airbnb or Rightmove: a single search button showing the current search.
+  $("#searchPill").innerHTML = searching
+    ? `<span class="ic">🔍</span><span><b>${esc(searchPlace())}</b><small>${esc(searchSummary(false) || t("any_property"))}</small></span><span class="x" data-clear role="button" aria-label="${t("clear_search")}">✕</span>`
+    : `<span class="ic">🔍</span><span><b>${t("welcome_start")}</b><small>${t("search_pill_hint")}</small></span>`;
+  $("#seeListings").hidden = !searching || state.view !== "map";
+  $("#seeListings").textContent = "🌐 " + t("see_listings");
+  $("#quickChips").innerHTML = state.data?.projects.length
+    ? `<button class="chip ${f.projects ? "on" : ""}" data-projects>${t("projects")}</button>` : "";
 }
+const hasSearch = () => { const f = state.filters; return !!(f.q.trim() || f.type || f.regions.size || f.band !== null || f.beds || f.foreign); };
+const searchPlace = () => state.filters.q.trim() || [...state.filters.regions].map((r) => t("region_" + r.toLowerCase())).join(", ") || t("all_mauritius");
 $("#quickChips").addEventListener("click", (e) => {
-  const b = e.target.closest("button"); if (!b) return;
-  if (b.dataset.type) state.filters.type = state.filters.type === b.dataset.type ? null : b.dataset.type;
-  if (b.hasAttribute("data-foreign")) state.filters.foreign = !state.filters.foreign;
-  // Projects and listings are separate views; picking a listing filter leaves the projects view.
-  if (b.hasAttribute("data-projects")) state.filters.projects = !state.filters.projects;
-  else state.filters.projects = false;
+  const b = e.target.closest("[data-projects]"); if (!b) return;
+  state.filters.projects = !state.filters.projects;
   $("#preview").hidden = true;
   refresh();
 });
+$("#searchPill").onclick = (e) => {
+  if (e.target.closest("[data-clear]")) {
+    Object.assign(state.filters, { q: "", type: null, regions: new Set(), band: null, beds: null, foreign: false,
+                                   projects: !!state.data?.projects.length && !allProperties().length });
+    return refresh();
+  }
+  openSearch();
+};
+$("#seeListings").onclick = () => openResults();
 $("#toggleView").onclick = () => { if (state.view === "map") showList(); else { state.view = "map"; renderChrome(); loadMap(); } };
-let qTimer;
-$("#q").addEventListener("input", (e) => {
-  state.filters.q = e.target.value; clearTimeout(qTimer); qTimer = setTimeout(refresh, 250);
-  // A whole town name (typed, or picked from the suggestions) moves the map there.
-  const town = state.data?.localities.find((l) => norm(l.name) === norm(e.target.value));
-  if (town) { map.flyTo({ center: [town.lon, town.lat], zoom: 13 }); e.target.blur(); }
-});
 $("#saveSearch").onclick = () => {
   const f = currentFilters(), searches = personal.searches;
   if (!searches.some((s) => JSON.stringify(s.filters) === JSON.stringify(f))) {
@@ -299,38 +302,14 @@ $("#saveSearch").onclick = () => {
   toast(t("search_saved"));
 };
 
-// --- Filters sheet --------------------------------------------------------
+// --- Sheets -------------------------------------------------------------------
 
 function chips(group, options, isOn) {
   return `<div class="wrap">${options.map(([v, label]) => `<button class="chip ${isOn(v) ? "on" : ""}" data-g="${group}" data-v="${esc(v)}">${esc(label)}</button>`).join("")}</div>`;
 }
-function openFilters() {
-  const f = state.filters, s = $("#sheet");
-  s.innerHTML = `<div class="inner">
-    <div class="row" style="align-items:center"><h2 style="margin:0;flex:1">${t("filters")}</h2><button class="btn secondary" data-reset>${t("reset")}</button></div>
-    <div><strong>${t("region")}</strong>${chips("region", ["North", "West", "Centre", "East", "South"].map((r) => [r, r]), (v) => f.regions.has(v))}</div>
-    <div><strong>${t("budget")}</strong>${chips("band", [["", t("any")], ...[0, 1, 2, 3].map((i) => [i, bandLabel(i)])], (v) => String(f.band ?? "") === String(v))}</div>
-    <div><strong>${t("bedrooms")}</strong>${chips("beds", [["", t("any")], ...[1, 2, 3, 4].map((n) => [n, n + "+"])], (v) => String(f.beds ?? "") === String(v))}</div>
-    <div><strong>${t("plot_units")}</strong>${chips("unit", Object.keys(M2).map((u) => [u, t("unit_" + u)]), (v) => state.prefs.unit === v)}</div>
-    <div><strong>${t("prices_in")}</strong>${chips("cur", [["MUR", "Rs"], ["EUR", "€"], ["USD", "$"]], (v) => state.prefs.currency === v)}</div>
-    <button class="btn" data-close>${t("show_n", { n: state.count })}</button></div>`;
-  if (!s.open) s.showModal();
+for (const id of ["#sheet", "#search", "#results"]) {
+  $(id).addEventListener("click", (e) => { if (e.target === $(id) || e.target.closest("[data-close]")) $(id).close(); });
 }
-$("#filtersBtn").onclick = openFilters;
-$("#sheet").addEventListener("click", (e) => {
-  const b = e.target.closest("button"), f = state.filters;
-  if (e.target === $("#sheet") || b?.hasAttribute("data-close")) return $("#sheet").close();
-  if (!b) return;
-  if (b.hasAttribute("data-reset")) Object.assign(f, { type: null, regions: new Set(), band: null, beds: null, foreign: false });
-  const { g, v } = b.dataset;
-  if (g === "region") f.regions.has(v) ? f.regions.delete(v) : f.regions.add(v);
-  if (g === "band") f.band = v === "" ? null : Number(v);
-  if (g === "beds") f.beds = v === "" ? null : Number(v);
-  if (g === "unit") state.prefs.unit = v;
-  if (g === "cur") state.prefs.currency = v;
-  store.set("prefs", state.prefs);
-  refresh(); openFilters();
-});
 
 // --- Search everywhere -------------------------------------------------------
 // The same search on the listing sites and social networks, as links. Linking is all this
@@ -396,28 +375,129 @@ function openWelcome() {
   store.set("welcomeSeen", true);
   if (!s.open) s.showModal();
 }
-document.addEventListener("click", (e) => { if (e.target.closest("[data-welcome-start]")) setTimeout(() => $("#q").focus(), 50); });
+document.addEventListener("click", (e) => { if (e.target.closest("[data-welcome-start]")) setTimeout(openSearch, 50); });
 
 /** "Vacoas · Apartments · 3+ bedrooms · Rs 5M – 15M": what the links search for. */
-function searchSummary() {
+function searchSummary(withPlace = true) {
   const f = state.filters;
-  return [f.q.trim() || [...f.regions].join(", ") || t("all_mauritius"), f.type && t(f.type),
+  return [withPlace && searchPlace(), f.type && t(f.type),
           f.type !== "land" && f.beds && t("beds_min", { n: f.beds }), f.band !== null && bandLabel(f.band), f.foreign && t("foreigners")]
     .filter(Boolean).join(" · ");
 }
 
-function openElsewhere() {
-  const s = $("#sheet");
-  s.innerHTML = `<div class="inner">
-    <div class="row" style="align-items:center"><h2 style="margin:0;flex:1">${t("everywhere")}</h2><button class="btn secondary" data-close>${t("close")}</button></div>
-    <div class="muted">${t("everywhere_intro")}</div>
-    <strong>${esc(searchSummary())}</strong>
-    ${elsewhereLinks().map((l) => `<a class="panel elsewhere" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">
-      <strong>${esc(l.name)} ↗</strong><span class="muted">${esc(l.note)}</span></a>`).join("")}
-    <div class="muted">${t("everywhere_add")}</div></div>`;
-  if (!s.open) s.showModal();
+// --- Guided search and results ----------------------------------------------------
+// One question at a time, as in Airbnb's search: where, then what kind of property, then
+// budget and the rest. Answers stay visible and can be tapped to change; "Show listings" is
+// always one tap away. Mirrors the Android SearchScreen.
+const search = { step: "where", draft: null, text: "" };
+
+function openSearch() {
+  const f = state.filters;
+  search.draft = { ...f, regions: new Set(f.regions), projects: false };
+  search.text = f.q; search.step = "where";
+  renderSearch();
+  if (!$("#search").open) $("#search").showModal();
+  setTimeout(() => $("#where")?.focus(), 50);
 }
-$("#elsewhere").onclick = openElsewhere;
+function towns(q) {
+  const n = norm(q); if (n.length < 2) return [];
+  return state.data.localities
+    .filter((l) => [l.name, ...l.aliases].some((x) => norm(x).startsWith(n) || norm(x).split(" ").some((w) => w.startsWith(n))))
+    .sort((a, b) => (norm(a.name).startsWith(n) ? 0 : 1) - (norm(b.name).startsWith(n) ? 0 : 1) || a.name.length - b.name.length)
+    .slice(0, 6);
+}
+function renderTowns() {
+  $("#towns").innerHTML = towns(search.text).map((l) =>
+    `<button class="town" data-town="${esc(l.name)}">📍 <b>${esc(l.name)}</b><small>${esc(l.district)}</small></button>`).join("");
+}
+function renderSearch() {
+  const d = search.draft, any = t("any");
+  const place = d.q || [...d.regions].map((r) => t("region_" + r.toLowerCase())).join(", ") || t("all_mauritius");
+  const kind = d.type ? t(d.type) : t("any_property");
+  const chip = (g, v, label, on) => `<button class="chip ${on ? "on" : ""}" data-g="${g}" data-v="${v}">${esc(label)}</button>`;
+  const steps = {
+    where: `<div class="step"><h2>${t("q_where_long")}</h2>
+      <label class="field"><span class="sr">${t("q_where")}</span><input id="where" type="search" autocomplete="off" value="${esc(search.text)}" placeholder="${t("search_hint")}"></label>
+      <div id="towns"></div>
+      <div class="muted">${t("or_region")}</div>
+      <div class="wrap">${["North", "West", "Centre", "East", "South"].map((r) => chip("region", r, t("region_" + r.toLowerCase()), !d.q && d.regions.has(r))).join("")}</div>
+      <button class="btn secondary" data-anywhere>🌐 ${t("all_mauritius")}</button></div>`,
+    what: `<div class="step"><h2>${t("q_what_long")}</h2><div class="kinds">${[["land", "⛰️"], ["house", "🏡"], ["apartment", "🏢"], ["", "🏠"]]
+      .map(([v, ic]) => `<button class="kind ${(d.type || "") === v ? "on" : ""}" data-kind="${v}"><span>${ic}</span>${v ? t(v) : t("any_property")}</button>`).join("")}</div></div>`,
+    details: `<div class="step"><h2>${t("budget")}</h2>
+        <div class="wrap">${chip("band", "", any, d.band === null)}${[0, 1, 2, 3].map((i) => chip("band", i, bandLabel(i), d.band === i)).join("")}</div>
+        <div class="wrap">${[["MUR", "Rs"], ["EUR", "€"], ["USD", "$"]].map(([c, l]) => chip("cur", c, l, state.prefs.currency === c)).join("")}</div></div>
+      ${d.type === "land" ? "" : `<div class="step"><h2>${t("bedrooms")}</h2>
+        <div class="wrap">${chip("beds", "", any, !d.beds)}${[1, 2, 3, 4].map((n) => chip("beds", n, n + "+", d.beds === n)).join("")}</div></div>`}
+      <label class="step" style="grid-template-columns:1fr auto;align-items:center"><span><b>${t("foreigners")}</b><br><span class="muted">${t("foreigners_hint")}</span></span>
+        <input type="checkbox" data-foreign ${d.foreign ? "checked" : ""} style="width:28px;height:28px"></label>`,
+  };
+  $("#search").innerHTML = `<div class="inner">
+    <div class="row" style="justify-content:space-between"><button class="btn secondary" data-close>✕</button><button class="btn secondary" data-reset>${t("clear_all")}</button></div>
+    ${search.step !== "where" ? `<button class="answered" data-step="where">${t("q_where")}<b>${esc(place)}</b></button>` : ""}
+    ${search.step === "details" ? `<button class="answered" data-step="what">${t("q_what")}<b>${esc(kind)}</b></button>` : ""}
+    ${steps[search.step]}
+    <div class="bottom"><button class="btn big" data-show>🔍 ${t("show_listings")}</button></div></div>`;
+  if (search.step === "where") renderTowns();
+}
+$("#search").addEventListener("input", (e) => { if (e.target.id === "where") { search.text = e.target.value; renderTowns(); } });
+$("#search").addEventListener("keydown", (e) => {
+  if (e.target.id === "where" && e.key === "Enter") { chooseWhere(search.text.trim()); }
+});
+function chooseWhere(q, region = null) {
+  Object.assign(search.draft, { q, regions: new Set(region ? [region] : []) });
+  search.text = q; search.step = "what"; renderSearch();
+}
+$("#search").addEventListener("click", (e) => {
+  const b = e.target.closest("button, input[data-foreign]"); if (!b) return;
+  const d = search.draft;
+  if (b.dataset.town) return chooseWhere(b.dataset.town);
+  if (b.hasAttribute("data-anywhere")) return chooseWhere("");
+  if (b.dataset.step) { search.step = b.dataset.step; return renderSearch(); }
+  if (b.dataset.kind !== undefined) { d.type = b.dataset.kind || null; search.step = "details"; return renderSearch(); }
+  if (b.hasAttribute("data-reset")) { search.draft = { ...d, q: "", type: null, regions: new Set(), band: null, beds: null, foreign: false }; search.text = ""; search.step = "where"; return renderSearch(); }
+  if (b.hasAttribute("data-foreign")) { d.foreign = b.checked; return; }
+  if (b.hasAttribute("data-show")) return runSearch();
+  const { g, v } = b.dataset;
+  if (g === "region") return chooseWhere("", v);
+  if (g === "band") d.band = v === "" ? null : Number(v);
+  if (g === "beds") d.beds = v === "" ? null : Number(v);
+  if (g === "cur") { state.prefs.currency = v; store.set("prefs", state.prefs); }
+  if (g) renderSearch();
+});
+function runSearch() {
+  const d = search.draft;
+  if (search.step === "where" && search.text.trim()) d.q = search.text.trim();
+  Object.assign(state.filters, d, { projects: false });
+  $("#search").close();
+  const town = state.data.localities.find((l) => norm(l.name) === norm(d.q));
+  if (town) map.flyTo({ center: [town.lon, town.lat], zoom: 13 });
+  state.view = "map"; refresh();
+  openResults();
+}
+
+/**
+ * The search's listings: a big card per site with every filter in its link. The sites don't
+ * allow being shown inside another website, so each opens in its own tab; nothing is copied.
+ */
+function openResults() {
+  const colors = { "lexpressproperty.com": "#D0202E", PropertyCloud: "#2CA6A4", Westimmo: "#1F3B57", Google: "#4285F4" };
+  const links = elsewhereLinks();
+  const card = (l) => `<a class="site" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">
+      <span class="logo" style="background:${colors[l.name] || "#4F5B58"}">${esc(l.name[0].toUpperCase())}</span>
+      <div><b>${esc(l.name)}</b><span class="muted">${esc(l.note)}</span></div><span class="go">${t("open")} ↗</span></a>`;
+  $("#results").innerHTML = `<div class="inner">
+    <div class="row" style="align-items:center"><button class="btn secondary" data-close>←</button>
+      <button class="search-pill" data-edit style="flex:1"><span><b>${esc(searchPlace())}</b><small>${esc(searchSummary(false) || t("any_property"))}</small></span><span class="x">⚙︎</span></button></div>
+    <h2 style="margin:4px 0 0">${t("results_title")}</h2>
+    <div class="muted">${t("everywhere_intro")}</div>
+    ${links.filter((l) => /lexpress|PropertyCloud|Westimmo/.test(l.name)).map(card).join("")}
+    <h3 style="margin:8px 0 0">${t("results_social")}</h3>
+    ${links.filter((l) => !/lexpress|PropertyCloud|Westimmo/.test(l.name)).map(card).join("")}
+    <div class="panel">${t("everywhere_add")}</div></div>`;
+  if (!$("#results").open) $("#results").showModal();
+}
+$("#results").addEventListener("click", (e) => { if (e.target.closest("[data-edit]")) { $("#results").close(); openSearch(); } });
 
 // --- Detail ---------------------------------------------------------------
 
@@ -639,11 +719,9 @@ document.querySelector(".tabs").addEventListener("click", (e) => {
 renderChrome();
 loadData().then((data) => {
   state.data = data;
-  $("#townList").innerHTML = data.localities.map((l) => `<option value="${esc(l.name)}">${esc(l.district)}</option>`).join("");
   const last = store.get("lastSearch");
   if (last) {
     Object.assign(state.filters, last, { regions: new Set(last.regions || []) });
-    $("#q").value = state.filters.q || "";
   } else if (!data.properties.length && !personal.mine.length && data.projects.length) {
     // Until listing sources join, open on the official projects rather than an empty map.
     state.filters.projects = true;
