@@ -37,10 +37,6 @@ jobs:
     env:
       MPF_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
       PGPASSWORD: postgres
-      # psql and pg_dump run inside the database container, so their version always
-      # matches the server's (the runner's own client can be newer and write settings
-      # an older server rejects).
-      PG: docker exec -i ${{ job.services.postgres.id }}
       MPF_CONTACT: ${{ vars.MPF_CONTACT }}
     steps:
       - uses: actions/checkout@v4
@@ -55,6 +51,11 @@ jobs:
         id: pages
         uses: actions/configure-pages@v5
       - name: Load state
+        env:
+          # psql and pg_dump run inside the database container, so their version always
+          # matches the server's (the runner's own client can be newer and write settings
+          # an older server rejects). The job context only exists inside steps.
+          PG: docker exec -i ${{ job.services.postgres.id }}
         run: |
           if curl -fsSL "${{ steps.pages.outputs.base_url }}/state/state.sql.gz" -o state.sql.gz; then
             # Drop settings a newer pg_dump may have written that this server doesn't know.
@@ -75,6 +76,8 @@ jobs:
           python -m mpf.cli build --sources ../data/sources.toml --out ../site/data
 
       - name: Save state (listings and history only; no user data exists server-side)
+        env:
+          PG: docker exec -i ${{ job.services.postgres.id }}
         run: |
           mkdir -p site/state
           $PG pg_dump -U postgres --clean --if-exists --no-owner \
