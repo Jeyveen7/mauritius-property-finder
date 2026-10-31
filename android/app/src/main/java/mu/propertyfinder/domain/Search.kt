@@ -4,6 +4,7 @@ import mu.propertyfinder.data.Costs
 import mu.propertyfinder.data.Detail
 import mu.propertyfinder.data.MapItem
 import mu.propertyfinder.data.Money
+import mu.propertyfinder.data.Project
 import mu.propertyfinder.data.SearchFilters
 import java.math.BigDecimal
 import java.math.MathContext
@@ -63,12 +64,30 @@ object Search {
      * is a pin; several at one exact point are a "stack" (no zoom separates them, so the
      * app lists them); anything else is a cluster to zoom into.
      */
-    fun clusters(items: List<Detail>, zoom: Double, cellPx: Int = 64): List<MapItem> {
+    fun clusters(items: List<Detail>, zoom: Double, cellPx: Int = 64): List<MapItem> =
+        group(items.map { Point(it.id, it.lat, it.lon, it.price, it.verified, null) }, zoom, cellPx)
+
+    fun projectClusters(items: List<Project>, zoom: Double, cellPx: Int = 64): List<MapItem> =
+        group(items.mapNotNull { p -> if (p.lat == null || p.lon == null) null else Point(p.id, p.lat, p.lon, null, true, p.scheme) },
+              zoom, cellPx)
+
+    /** Official projects match on place and words only: they have no price, size or type. */
+    fun projectMatches(p: Project, regions: Collection<String>, q: String?): Boolean {
+        if (regions.isNotEmpty() && p.region !in regions) return false
+        val nq = norm(q)
+        if (nq.isEmpty() || p.searchText.contains(nq)) return true
+        val words = p.searchText.split(" ")
+        return nq.split(" ").all { w -> words.any { it.startsWith(w) } }
+    }
+
+    private class Point(val id: String, val lat: Double, val lon: Double, val price: Money?, val verified: Boolean, val scheme: String?)
+
+    private fun group(items: List<Point>, zoom: Double, cellPx: Int): List<MapItem> {
         val cell = 360.0 / (256 * 2.0.pow(zoom)) * cellPx
         return items.groupBy { floor(it.lon / cell).toLong() to floor(mercY(it.lat) / cell).toLong() }.values.map { group ->
             if (group.size == 1) {
                 val p = group[0]
-                MapItem("pin", p.id, p.lat, p.lon, p.price, unverified = !p.verified)
+                MapItem("pin", p.id, p.lat, p.lon, p.price, unverified = !p.verified, scheme = p.scheme)
             } else {
                 val samePoint = group.map { "%.6f,%.6f".format(it.lat, it.lon) }.toSet().size == 1
                 MapItem(if (samePoint) "stack" else "cluster", null, group.map { it.lat }.average(), group.map { it.lon }.average(),

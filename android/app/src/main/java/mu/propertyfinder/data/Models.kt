@@ -126,6 +126,8 @@ data class MapItem(
     val unverified: Boolean = false,
     val count: Int = 1,
     val ids: List<String>? = null,
+    /** Set for an official approved project (PDS, RES, IRS): shown instead of a price. */
+    val scheme: String? = null,
 )
 
 data class Costs(
@@ -154,7 +156,38 @@ data class SnapMeta(
     val fx: Fx,
     @SerialName("assumed_mortgage_rate_pct") val assumedMortgageRatePct: String,
     val attribution: List<String> = emptyList(),
+    val projects: Int = 0,
 )
+
+/**
+ * A development the Economic Development Board approved for sale to foreign buyers, from its
+ * public lists. Official facts, not an advert: there is no price. Placed at its village centre.
+ */
+@Serializable
+data class Project(
+    val id: String,
+    val scheme: String,
+    @SerialName("scheme_name") val schemeName: String,
+    val developer: String,
+    val location: String,
+    val project: String,
+    val status: String,
+    val website: String? = null,
+    @SerialName("source_url") val sourceUrl: String,
+    val locality: String? = null,
+    val district: String? = null,
+    val region: String? = null,
+    val lat: Double? = null,
+    val lon: Double? = null,
+    @SerialName("search_text") val searchText: String = "",
+) {
+    /** "Trou aux Biches, Pamplemousses" stays as is; "Tamarin" becomes "Tamarin · Black River". */
+    val place: String
+        get() {
+            val words = " ${mu.propertyfinder.domain.norm(location)} "
+            return if (district == null || words.contains(" ${mu.propertyfinder.domain.norm(district)} ")) location else "$location · $district"
+        }
+}
 
 @Serializable
 data class Locality(

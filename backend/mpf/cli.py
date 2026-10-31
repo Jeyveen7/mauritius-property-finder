@@ -133,6 +133,13 @@ def cmd_export_snapshot(conn, args, settings):
     print(json.dumps({k: meta[k] for k in ("version", "count", "generated_at")}))
 
 
+def cmd_edb_import(conn, args, settings):
+    from pathlib import Path
+    from mpf import official
+    rows = official.parse(Path(args.text).read_text(encoding="utf-8"), args.scheme)
+    print(args.scheme, "projects:", official.write_scheme(rows, args.scheme))
+
+
 def cmd_build(conn, args, settings):
     from pathlib import Path
     from mpf import build
@@ -186,6 +193,10 @@ def main(argv=None):
     p = sub.add_parser("export-snapshot", help="write the static data files the apps download")
     p.add_argument("--out", default="snapshot")
     p.set_defaults(fn=cmd_export_snapshot)
+    p = sub.add_parser("edb-import", help="re-key an EDB approved-projects list (pdftotext -layout output)")
+    p.add_argument("text")
+    p.add_argument("--scheme", required=True, choices=["PDS", "RES", "IRS"])
+    p.set_defaults(fn=cmd_edb_import)
     p = sub.add_parser("build", help="import every source in data/sources.toml and export the snapshot")
     p.add_argument("--sources", default="../data/sources.toml")
     p.add_argument("--out", default="snapshot")

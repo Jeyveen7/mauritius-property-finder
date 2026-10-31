@@ -168,4 +168,16 @@
         <item quantity="one">A new listing matches your saved searches.</item>
         <item quantity="other">%1$d new listings match your saved searches.</item>
     </plurals>
+    <string name="approved_projects">Approved projects</string>
+    <string name="list_projects">List · %1$d projects</string>
+    <string name="n_projects">%1$d approved projects</string>
+    <string name="projects_intro">Developments the Economic Development Board has approved for sale to foreign buyers (PDS, RES and IRS schemes). Official facts, not adverts: there are no prices. Ask the developer what is still available.</string>
+    <string name="project_what">What is being built</string>
+    <string name="project_scheme">Approved under the %1$s, which is open to non-citizens. Buying usually also gives residence for a qualifying price.</string>
+    <string name="project_no_price">The EDB list has no prices or availability. Ask the developer.</string>
+    <string name="developer_site">Developer\'s website</string>
+    <string name="project_source">Source</string>
+    <string name="project_source_note">Economic Development Board, Mauritius: public list of approved projects. Contact details in the list aren\'t copied here; use the developer\'s website.</string>
+    <string name="open_edb">Open the EDB list (PDF)</string>
+    <string name="eligible_yes">Yes</string>
 </resources>

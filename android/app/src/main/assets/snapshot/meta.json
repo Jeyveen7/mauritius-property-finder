@@ -1,8 +1,9 @@
 {
  "format": 1,
- "version": "0f58b9b8091a3d0e",
- "generated_at": "2026-10-25T05:32:30+00:00",
- "count": 17,
+ "version": "9e40329850ae57b8",
+ "generated_at": "2026-10-31T10:56:56+00:00",
+ "count": 0,
+ "projects": 188,
  "rules": {
   "label": "Finance Act 2026 (assented 12 Aug 2026)",
   "registration_duty_pct": "5"
@@ -17,6 +18,7 @@
  "assumed_mortgage_rate_pct": "6.0",
  "attribution": [
   "Map data and places \u00a9 OpenStreetMap contributors (ODbL)",
-  "Area photos: Wikimedia Commons contributors, licences as credited"
+  "Area photos: Wikimedia Commons contributors, licences as credited",
+  "Approved projects: Economic Development Board, Mauritius (public lists; facts only)"
  ]
 }

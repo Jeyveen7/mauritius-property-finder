@@ -25,11 +25,13 @@ async function gunzipJson(resp) {
 async function loadData() {
   const meta = await (await fetch(new URL("meta.json", DATA), { cache: "no-cache" })).json();
   const v = `?v=${meta.version}`;
-  const [properties, localities] = await Promise.all([
+  const [properties, localities, projects] = await Promise.all([
     fetch(new URL("properties.json.gz" + v, DATA)).then(gunzipJson),
     fetch(new URL("localities.json.gz" + v, DATA)).then(gunzipJson),
+    meta.projects ? fetch(new URL("projects.json.gz" + v, DATA)).then(gunzipJson) : [],
   ]);
-  return { meta, properties, localities, byId: new Map(properties.map((p) => [p.id, p])),
+  return { meta, properties, localities, projects, byId: new Map(properties.map((p) => [p.id, p])),
+           projectById: new Map(projects.map((p) => [p.id, p])),
            locByName: new Map(localities.map((l) => [l.name, l])) };
 }
 
@@ -50,7 +52,7 @@ const SYM = { MUR: "Rs ", EUR: "€", USD: "$" };
 const M2 = { m2: 1, perch: 42.21, toise: 3.7987, arpent: 4220.87 };
 const BANDS = { MUR: [5e6, 15e6, 30e6], EUR: [1e5, 3e5, 6e5], USD: [1e5, 3e5, 7e5] };
 const state = {
-  filters: { type: null, regions: new Set(), q: "", band: null, beds: null, foreign: false },
+  filters: { type: null, regions: new Set(), q: "", band: null, beds: null, foreign: false, projects: false },
   prefs: store.get("prefs", { currency: "MUR", unit: "m2" }),
   data: null, view: "map", count: 0, stack: null,
 };
@@ -134,7 +136,20 @@ function toast(msg) {
 
 // --- Cards ----------------------------------------------------------------
 
+const projectPlace = (p) => ` ${norm(p.location)} `.includes(` ${norm(p.district)} `) ? p.location : `${p.location} · ${p.district}`;
+
+/** An official EDB approved project: a development open to foreign buyers, with no price. */
+function projectCardHtml(p) {
+  return `<button class="card" data-open="${esc(p.id)}"><div class="body">
+      <div><span class="tag ok">${esc(p.scheme)}</span> <span class="tag">${esc(p.status)}</span></div>
+      <strong>${esc(p.developer)}</strong>
+      <span>${esc(p.project)}</span>
+      <span class="muted">${esc(projectPlace(p))}</span>
+    </div></button>`;
+}
+
 function cardHtml(c) {
+  if (c.scheme) return projectCardHtml(c);
   const isNew = Date.now() - Date.parse(c.first_seen_at) < 3 * 864e5;
   return `<button class="card" data-open="${esc(c.id)}">
     ${c.thumb && !c.mine ? `<img src="${esc(c.thumb)}" alt="" loading="lazy">` : ""}
@@ -175,14 +190,23 @@ function clusters(items, zoom, cellPx = 64) {
     (cells.get(key) ?? cells.set(key, []).get(key)).push(p);
   }
   return [...cells.values()].map((g) => {
-    if (g.length === 1) return { kind: "pin", id: g[0].id, lat: g[0].lat, lon: g[0].lon, price: g[0].price, unverified: !g[0].verified };
+    if (g.length === 1) return { kind: "pin", id: g[0].id, lat: g[0].lat, lon: g[0].lon, price: g[0].price, scheme: g[0].scheme, unverified: !g[0].verified && !g[0].scheme };
     const same = new Set(g.map((p) => `${p.lat.toFixed(6)},${p.lon.toFixed(6)}`)).size === 1;
     return { kind: same ? "stack" : "cluster", count: g.length, ids: same ? g.map((p) => p.id) : null,
              lat: g.reduce((a, p) => a + p.lat, 0) / g.length, lon: g.reduce((a, p) => a + p.lon, 0) / g.length };
   });
 }
 
-function found() { const f = currentFilters(); return allProperties().filter((p) => matches(p, f)); }
+function found() {
+  const f = currentFilters();
+  if (state.filters.projects) return (state.data?.projects ?? []).filter((p) => matchesProject(p, f));
+  return allProperties().filter((p) => matches(p, f));
+}
+function matchesProject(p, f) {
+  if (f.regions?.length && !f.regions.includes(p.region)) return false;
+  const q = norm(f.q), words = p.search_text.split(" ");
+  return !q || p.search_text.includes(q) || q.split(" ").every((w) => words.some((x) => x.startsWith(w)));
+}
 
 function loadMap() {
   const b = map.getBounds(), all = found();
@@ -191,8 +215,8 @@ function loadMap() {
   markers = clusters(visible, map.getZoom()).map((it) => {
     const el = document.createElement("div");
     if (it.kind === "pin") {
-      el.className = "pin" + (it.unverified ? " unverified" : "");
-      el.textContent = short(convert(it.price, state.prefs.currency));
+      el.className = "pin" + (it.unverified ? " unverified" : "") + (it.scheme ? " project" : "");
+      el.textContent = it.scheme ?? short(convert(it.price, state.prefs.currency));
       el.onclick = (e) => { e.stopPropagation(); preview(it.id); };
     } else {
       el.className = "group"; el.textContent = it.count;
@@ -210,7 +234,7 @@ map.on("moveend", () => state.view === "map" && state.data && loadMap());
 map.on("click", () => ($("#preview").hidden = true));
 
 function preview(id) {
-  const p = findById(id), el = $("#preview");
+  const p = findById(id) ?? state.data?.projectById.get(id), el = $("#preview");
   el.innerHTML = p ? cardHtml(p) : ""; el.hidden = !p;
 }
 
@@ -219,9 +243,12 @@ function sortList(list) {
 }
 function showList(ids = null) {
   state.view = "list"; state.stack = ids;
-  const all = found(), list = ids ? allProperties().filter((p) => ids.includes(p.id)) : all;
+  const all = found(), list = ids ? all.filter((p) => ids.includes(p.id)) : all;
   state.count = all.length;
-  $("#list").innerHTML = `<div class="cards">${list.length ? sortList(list).map(cardHtml).join("") : `<p>${t("no_results")}</p>`}</div>`;
+  const sorted = state.filters.projects ? [...list].sort((a, b) => a.developer.localeCompare(b.developer)) : sortList(list);
+  const intro = state.filters.projects ? `<div class="panel">${t("projects_intro")}</div>`
+    : !state.data?.properties.length ? `<div class="panel">${t("no_listings_yet")}</div>` : "";
+  $("#list").innerHTML = `<div class="cards">${intro}${list.length ? sorted.map(cardHtml).join("") : `<p>${t("no_results")}</p>`}</div>`;
   renderChrome();
 }
 function refresh() { if (state.data) (state.view === "map" ? loadMap() : showList(state.stack)); }
@@ -231,17 +258,23 @@ function renderChrome() {
   $("#map").hidden = state.view !== "map"; $("#list").hidden = state.view !== "list";
   $(".search").classList.toggle("opaque", state.view === "list");
   $("#preview").hidden = state.view !== "map" || $("#preview").hidden;
-  $("#toggleView").textContent = state.view === "map" ? t("list_n", { n: state.count }) : t("map");
+  $("#toggleView").textContent = state.view === "map" ? t(f.projects ? "list_projects" : "list_n", { n: state.count }) : t("map");
+  $("#saveSearch").hidden = f.projects;
   const active = [f.type, f.regions.size, f.band !== null, f.beds, f.foreign].filter(Boolean).length;
   $("#filterCount").hidden = !active; $("#filterCount").textContent = active;
   $("#quickChips").innerHTML = ["land", "apartment", "house"].map((ty) =>
     `<button class="chip ${f.type === ty ? "on" : ""}" data-type="${ty}">${t(ty)}</button>`).join("") +
-    `<button class="chip ${f.foreign ? "on" : ""}" data-foreign>${t("foreigners")}</button>`;
+    `<button class="chip ${f.foreign ? "on" : ""}" data-foreign>${t("foreigners")}</button>` +
+    (state.data?.projects.length ? `<button class="chip ${f.projects ? "on" : ""}" data-projects>${t("projects")}</button>` : "");
 }
 $("#quickChips").addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b) return;
   if (b.dataset.type) state.filters.type = state.filters.type === b.dataset.type ? null : b.dataset.type;
   if (b.hasAttribute("data-foreign")) state.filters.foreign = !state.filters.foreign;
+  // Projects and listings are separate views; picking a listing filter leaves the projects view.
+  if (b.hasAttribute("data-projects")) state.filters.projects = !state.filters.projects;
+  else state.filters.projects = false;
+  $("#preview").hidden = true;
   refresh();
 });
 $("#toggleView").onclick = () => { if (state.view === "map") showList(); else { state.view = "map"; renderChrome(); loadMap(); } };
@@ -294,7 +327,28 @@ function eligibilityText(e) {
   const scheme = (e.route || "").replace("scheme:", "").replace("SMART_CITY", "Smart City");
   return { open_scheme: t("open_scheme", { s: scheme }) }[e.reason] ?? t(e.reason === "citizens_and_permit_holders" ? "citizens" : e.reason);
 }
+function openProject(p) {
+  const dlg = $("#detail"), link = (href, label) =>
+    `<a class="btn secondary" style="display:grid;place-items:center;text-decoration:none" href="${esc(href)}" target="_blank" rel="noopener">${esc(label)}</a>`;
+  dlg.innerHTML = `<div class="inner">
+    <div class="row"><button class="btn secondary" data-close>${t("close")}</button></div>
+    <div><div class="row" style="gap:6px"><span class="tag ok">${esc(p.scheme)}</span><span class="tag">${esc(p.status)}</span></div>
+      <h2 style="margin:6px 0">${esc(p.developer)}</h2>
+      <div class="muted">${esc(projectPlace(p) + " · " + p.region)}</div>
+      <div class="muted">${t("village_centre")}</div></div>
+    <div class="panel"><h3>${t("project")}</h3><div>${esc(p.project)}</div></div>
+    <div class="panel"><div class="row" style="justify-content:space-between"><h3>${t("can_foreigners")}</h3><span class="tag ok">${t("yes")}</span></div>
+      <div>${esc(t("project_scheme", { s: p.scheme_name }))}</div></div>
+    ${p.website ? link(p.website, t("developer_site")) : ""}
+    <div class="panel"><h3>${t("project_source")}</h3><div class="muted">${t("project_source_note")}</div>${link(p.source_url, t("open_edb"))}</div>
+  </div>`;
+  delete dlg.dataset.id;
+  if (!dlg.open) dlg.showModal();
+}
+
 function openDetail(id, deposit = 20, termYears = 20) {
+  const project = state.data?.projectById.get(id);
+  if (project) return openProject(project);
   const d = findById(id);
   if (!d) return toast(t("gone"));
   const dlg = $("#detail"), e = d.eligibility, pc = d.price_check, c = costs(d.price, deposit, termYears);
@@ -487,6 +541,8 @@ document.querySelector(".tabs").addEventListener("click", (e) => {
 renderChrome();
 loadData().then((data) => {
   state.data = data;
+  // Until listing sources join, open on the official projects rather than an empty map.
+  if (!data.properties.length && !personal.mine.length && data.projects.length) state.filters.projects = true;
   const notes = newsSinceLastVisit();
   if (notes.length) toast(notes.join(" "));
   refresh();

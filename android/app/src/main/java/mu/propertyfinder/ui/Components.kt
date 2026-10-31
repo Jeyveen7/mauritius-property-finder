@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import mu.propertyfinder.R
 import mu.propertyfinder.data.Card as PropertyCard
+import mu.propertyfinder.data.Project
 import mu.propertyfinder.data.DisplayPrefs
 import mu.propertyfinder.domain.Converter
 import mu.propertyfinder.domain.Format
@@ -70,6 +71,26 @@ fun sizeText(type: String, plotM2: Double?, floorM2: Double?, bedrooms: Int?, di
 
 fun isNew(firstSeenAt: String): Boolean =
     Duration.between(OffsetDateTime.parse(firstSeenAt), OffsetDateTime.now()).toDays() <= 3
+
+/** An official approved project: scheme and status, developer, what is built, where. No price. */
+@Composable
+fun ProjectCardRow(p: Project, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(18.dp),
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Badge(p.scheme, EligibleBg, EligibleFg)
+                Badge(p.status, Color(0xFFECEFEE), Color(0xFF3E4A48))
+            }
+            Text(p.developer, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Text(p.project, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(p.place, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+        }
+    }
+}
 
 @Composable
 fun PropertyCardRow(card: PropertyCard, display: DisplayPrefs, converter: Converter, onClick: () -> Unit) {

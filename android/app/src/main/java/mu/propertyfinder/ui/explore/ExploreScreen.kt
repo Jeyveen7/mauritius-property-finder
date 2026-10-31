@@ -60,6 +60,7 @@ import mu.propertyfinder.R
 import mu.propertyfinder.domain.Converter
 import mu.propertyfinder.domain.Format
 import mu.propertyfinder.ui.ChoiceChips
+import mu.propertyfinder.ui.ProjectCardRow
 import mu.propertyfinder.ui.PropertyCardRow
 
 /** One ExploreViewModel per activity, so Saved can apply a search to it. */
@@ -91,7 +92,7 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
         if (s.view == ExploreView.MAP) {
             PropertyMap(
                 items = s.mapItems,
-                label = { item -> item.price?.let { Format.moneyShort(converter.convert(it, s.display.currency)) }.orEmpty() },
+                label = { item -> item.scheme ?: item.price?.let { Format.moneyShort(converter.convert(it, s.display.currency)) }.orEmpty() },
                 onViewport = vm::onViewport,
                 onPin = { vm.select(it) },
                 onStack = vm::openStack,
@@ -103,7 +104,15 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 4.dp, 16.dp, 96.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                item {
+                if (s.filters.projects) {
+                    item {
+                        Text(stringResource(R.string.n_projects, s.count), style = MaterialTheme.typography.titleMedium,
+                             fontWeight = FontWeight.ExtraBold)
+                        Text(stringResource(R.string.projects_intro), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                             modifier = Modifier.padding(top = 4.dp))
+                    }
+                    items(s.projectList, key = { it.id }) { p -> ProjectCardRow(p) { onOpen(p.id) } }
+                } else item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             if (s.stackIds != null) stringResource(R.string.stack_title, s.list.size)
@@ -124,7 +133,7 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
                         s.sort, vm::setSort,
                     )
                 }
-                items(s.list, key = { it.id }) { card ->
+                if (!s.filters.projects) items(s.list, key = { it.id }) { card ->
                     PropertyCardRow(card, s.display, converter) { onOpen(card.id) }
                 }
             }
@@ -137,11 +146,16 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
                 val f = s.filters
                 listOf("land" to R.string.type_land, "apartment" to R.string.type_apartment, "house" to R.string.type_house)
                     .forEach { (t, label) ->
-                        FilterChip(selected = f.type == t, onClick = { vm.setFilters(f.copy(type = if (f.type == t) null else t)) },
+                        FilterChip(selected = f.type == t && !f.projects,
+                                   onClick = { vm.setFilters(f.copy(type = if (f.type == t) null else t, projects = false)) },
                                    label = { Text(stringResource(label)) })
                     }
-                FilterChip(selected = f.foreign, onClick = { vm.setFilters(f.copy(foreign = !f.foreign)) },
+                FilterChip(selected = f.foreign && !f.projects, onClick = { vm.setFilters(f.copy(foreign = !f.foreign, projects = false)) },
                            label = { Text(stringResource(R.string.foreigners_can_buy)) })
+                if (s.hasProjects) {
+                    FilterChip(selected = f.projects, onClick = { vm.setFilters(f.copy(projects = !f.projects)) },
+                               label = { Text(stringResource(R.string.approved_projects)) })
+                }
             },
             opaque = s.view == ExploreView.LIST,
         )
@@ -158,7 +172,7 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
             }
             if (s.view == ExploreView.MAP) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Surface(shape = RoundedCornerShape(50), shadowElevation = 6.dp) {
+                    if (!s.filters.projects) Surface(shape = RoundedCornerShape(50), shadowElevation = 6.dp) {
                         IconButton(onClick = { saveSearch() }) {
                             Icon(Icons.Filled.NotificationsNone, contentDescription = stringResource(R.string.save_search))
                         }
@@ -166,9 +180,17 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
                     ExtendedFloatingActionButton(
                         onClick = { vm.setView(ExploreView.LIST) },
                         icon = { Icon(Icons.AutoMirrored.Filled.List, null) },
-                        text = { Text(stringResource(R.string.list_count, s.count)) },
+                        text = { Text(stringResource(if (s.filters.projects) R.string.list_projects else R.string.list_count, s.count)) },
                         containerColor = Color(0xFF12201F), contentColor = Color.White,
                     )
+                }
+                s.selectedProject?.let { p ->
+                    Box {
+                        ProjectCardRow(p) { onOpen(p.id) }
+                        IconButton(onClick = vm::clearSelection, modifier = Modifier.align(Alignment.TopEnd)) {
+                            Icon(Icons.Filled.Close, contentDescription = null)
+                        }
+                    }
                 }
                 s.selected?.let { card ->
                     Box {

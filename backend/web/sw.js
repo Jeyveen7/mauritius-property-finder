@@ -1,5 +1,5 @@
 // Keeps the app and the last listings snapshot available offline (network first).
-const SHELL = "mpf-shell-v2";
+const SHELL = "mpf-shell-v3";
 const FILES = ["./", "index.html", "style.css", "i18n.js", "app.js", "manifest.webmanifest", "icon.svg"];
 self.addEventListener("install", (e) => e.waitUntil(caches.open(SHELL).then((c) => c.addAll(FILES))));
 self.addEventListener("activate", (e) => e.waitUntil(

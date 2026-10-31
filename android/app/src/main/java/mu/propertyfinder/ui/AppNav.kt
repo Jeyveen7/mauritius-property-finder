@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.StateFlow
 import mu.propertyfinder.R
 import mu.propertyfinder.SharedContent
 import mu.propertyfinder.ui.detail.DetailScreen
+import mu.propertyfinder.ui.detail.ProjectScreen
 import mu.propertyfinder.ui.explore.ExploreScreen
 import mu.propertyfinder.ui.post.AddPostScreen
 import mu.propertyfinder.ui.saved.SavedScreen
@@ -85,7 +86,9 @@ fun AppNav(
                 AddPostScreen(shared = shared, onSharedConsumed = onSharedConsumed, onPublished = open)
             }
             composable("property/{id}") { backStack ->
-                DetailScreen(id = backStack.arguments!!.getString("id")!!, onBack = { nav.popBackStack() })
+                val id = backStack.arguments!!.getString("id")!!
+                if (id.startsWith("edb-")) ProjectScreen(id = id, onBack = { nav.popBackStack() })
+                else DetailScreen(id = id, onBack = { nav.popBackStack() })
             }
         }
     }

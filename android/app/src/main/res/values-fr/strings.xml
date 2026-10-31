@@ -168,4 +168,16 @@
         <item quantity="one">Une nouvelle annonce correspond à vos recherches.</item>
         <item quantity="other">%1$d nouvelles annonces correspondent à vos recherches.</item>
     </plurals>
+    <string name="approved_projects">Projets agréés</string>
+    <string name="list_projects">Liste · %1$d projets</string>
+    <string name="n_projects">%1$d projets agréés</string>
+    <string name="projects_intro">Projets que l\'Economic Development Board a agréés à la vente aux étrangers (dispositifs PDS, RES et IRS). Des faits officiels, pas des annonces : il n\'y a pas de prix. Demandez au promoteur ce qui reste disponible.</string>
+    <string name="project_what">Ce qui est construit</string>
+    <string name="project_scheme">Agréé au titre du %1$s, ouvert aux non-citoyens. L\'achat donne généralement droit à la résidence à partir d\'un certain prix.</string>
+    <string name="project_no_price">La liste de l\'EDB n\'indique ni prix ni disponibilités. Demandez au promoteur.</string>
+    <string name="developer_site">Site du promoteur</string>
+    <string name="project_source">Source</string>
+    <string name="project_source_note">Economic Development Board, Maurice : liste publique des projets agréés. Les coordonnées de la liste ne sont pas reprises ici ; passez par le site du promoteur.</string>
+    <string name="open_edb">Ouvrir la liste de l\'EDB (PDF)</string>
+    <string name="eligible_yes">Oui</string>
 </resources>

@@ -11,6 +11,7 @@ Everything the app uses is free or open source. A few services need a free accou
 | Alerts | On-device background refresh | Free, no account | Nothing: the Android app checks for new data twice a day and notifies you locally. No Firebase needed. |
 | SMS codes | — | Never free | Not used. Phone verification stays available in the code if you ever add a provider (`OtpSender`). |
 | iPhone | Installable web app on GitHub Pages | Free | Open `https://<you>.github.io/<repo>/` in Safari → Share → Add to Home Screen. No Apple developer account needed. |
+| Approved projects | Economic Development Board public lists (PDS, RES, IRS) | Free | Already in `backend/seed/edb_projects.csv` (facts only; contact details dropped). When the EDB updates a PDF: `pdftotext -layout list.pdf list.txt`, then `mpf.cli edb-import list.txt --scheme PDS`. |
 | Partner listings | `data/sources.toml` + their feed URL or CSV | Free | Add the partner to the file (after they accept the partner terms); the daily build imports it. |
 | Other websites | Polite crawler in the daily build | Free | Only after you read a site's terms; add it under `[[crawl]]` with your name and what the terms say. |
 

@@ -23,8 +23,14 @@ val json = Json {
 }
 
 /** The data the app works from: one snapshot of every property, loaded into memory. */
-class Snapshot(val meta: SnapMeta, val properties: List<Detail>, val localities: List<Locality>) {
+class Snapshot(
+    val meta: SnapMeta,
+    val properties: List<Detail>,
+    val localities: List<Locality>,
+    val projects: List<Project> = emptyList(),
+) {
     val byId: Map<String, Detail> = properties.associateBy { it.id }
+    val projectById: Map<String, Project> = projects.associateBy { it.id }
     val localityByName: Map<String, Locality> = localities.associateBy { it.name }
 }
 
@@ -60,7 +66,9 @@ class SnapshotStore(private val context: Context) {
             if (meta.format != 1 || meta.version == old?.meta?.version) return@withContext null
             // Download to temporary files, check they parse, then swap them in.
             val tmp = File(dir, "incoming").apply { deleteRecursively(); mkdirs() }
-            for (name in listOf("properties.json.gz", "localities.json.gz")) {
+            val names = listOf("properties.json.gz", "localities.json.gz") +
+                (if (meta.projects > 0) listOf("projects.json.gz") else emptyList())
+            for (name in names) {
                 get("$remoteBase/$name")?.use { input -> File(tmp, name).outputStream().use { input.copyTo(it) } }
                     ?: return@withContext null
             }
@@ -82,6 +90,7 @@ class SnapshotStore(private val context: Context) {
     private fun read(open: (String) -> InputStream): Snapshot {
         fun gz(name: String) = GZIPInputStream(open(name)).bufferedReader().use { it.readText() }
         val meta = json.decodeFromString<SnapMeta>(open("meta.json").bufferedReader().use { it.readText() })
-        return Snapshot(meta, json.decodeFromString(gz("properties.json.gz")), json.decodeFromString(gz("localities.json.gz")))
+        return Snapshot(meta, json.decodeFromString(gz("properties.json.gz")), json.decodeFromString(gz("localities.json.gz")),
+                        if (meta.projects > 0) json.decodeFromString(gz("projects.json.gz")) else emptyList())
     }
 }

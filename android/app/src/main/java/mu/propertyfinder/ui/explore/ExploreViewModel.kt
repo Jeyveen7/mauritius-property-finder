@@ -14,12 +14,14 @@ import mu.propertyfinder.data.Detail
 import mu.propertyfinder.data.DisplayPrefs
 import mu.propertyfinder.data.Fx
 import mu.propertyfinder.data.MapItem
+import mu.propertyfinder.data.Project
 import mu.propertyfinder.data.SearchFilters
 import mu.propertyfinder.data.card
 import mu.propertyfinder.domain.Budgets
 import mu.propertyfinder.domain.Converter
 import mu.propertyfinder.domain.Search
 import mu.propertyfinder.domain.Units
+import mu.propertyfinder.domain.norm
 
 /** Plot-size thresholds that are round numbers in each unit. */
 val plotBands = mapOf(
@@ -37,6 +39,8 @@ data class Filters(
     val plotBand: Int? = null,
     val minBedrooms: Int? = null,
     val foreign: Boolean = false,
+    /** Show the official approved projects instead of listings. */
+    val projects: Boolean = false,
 ) {
     val activeCount: Int
         get() = listOf(type != null, regions.isNotEmpty(), budgetBand != null, plotBand != null,
@@ -53,6 +57,9 @@ data class ExploreState(
     val mapItems: List<MapItem> = emptyList(),
     val count: Int = 0,
     val list: List<Card> = emptyList(),
+    val projectList: List<Project> = emptyList(),
+    val hasProjects: Boolean = false,
+    val selectedProject: Project? = null,
     val sort: String = "new",
     /** Set when the user opened a stack of listings that share one map point. */
     val stackIds: List<String>? = null,
@@ -69,6 +76,8 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
     val state: StateFlow<ExploreState> = _state
 
     private var all: List<Detail> = emptyList()
+    private var projects: List<Project> = emptyList()
+    private var openedOnProjects = false
     private var viewport: Pair<DoubleArray, Double>? = null
 
     init {
@@ -79,7 +88,15 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
                 Triple(snap, personal.mine, personal.hiddenIds)
             }.collect { (snap, mine, hidden) ->
                 all = ((snap?.properties ?: emptyList()) + mine).filter { it.id !in hidden }
-                _state.update { it.copy(fx = snap?.meta?.fx, loaded = snap != null, dataDate = snap?.meta?.generatedAt?.take(10)) }
+                projects = snap?.projects.orEmpty()
+                // Until listing sources join, open on the official projects rather than an empty map.
+                val startOnProjects = snap != null && !openedOnProjects && all.isEmpty() && projects.isNotEmpty()
+                if (snap != null) openedOnProjects = true
+                _state.update {
+                    it.copy(fx = snap?.meta?.fx, loaded = snap != null, dataDate = snap?.meta?.generatedAt?.take(10),
+                            hasProjects = projects.isNotEmpty(),
+                            filters = if (startOnProjects) it.filters.copy(projects = true) else it.filters)
+                }
                 recompute()
             }
         }
@@ -107,6 +124,7 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun recompute() {
         val s = state.value
+        if (s.filters.projects) return recomputeProjects()
         val found = matching()
         val listSource = s.stackIds?.let { ids -> all.filter { it.id in ids } } ?: found
         val vp = viewport
@@ -123,8 +141,24 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    private fun recomputeProjects() {
+        val f = state.value.filters
+        val found = projects.filter { Search.projectMatches(it, f.regions, f.q) }
+        val vp = viewport
+        val inView = if (vp == null) found else found.filter { p ->
+            p.lat != null && p.lon != null && p.lat in vp.first[1]..vp.first[3] && p.lon in vp.first[0]..vp.first[2]
+        }
+        _state.update {
+            it.copy(
+                count = found.size, list = emptyList(), selected = null,
+                projectList = found.sortedBy { p -> norm(p.developer) },
+                mapItems = if (vp == null) emptyList() else Search.projectClusters(inView, vp.second),
+            )
+        }
+    }
+
     fun setFilters(f: Filters) {
-        _state.update { it.copy(filters = f, selected = null, stackIds = null) }
+        _state.update { it.copy(filters = f, selected = null, selectedProject = null, stackIds = null) }
         recompute()
     }
 
@@ -160,8 +194,10 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
         recompute()
     }
 
-    fun select(id: String) = _state.update { it.copy(selected = all.firstOrNull { d -> d.id == id }?.card()) }
-    fun clearSelection() = _state.update { it.copy(selected = null) }
+    fun select(id: String) = _state.update {
+        it.copy(selected = all.firstOrNull { d -> d.id == id }?.card(), selectedProject = projects.firstOrNull { p -> p.id == id })
+    }
+    fun clearSelection() = _state.update { it.copy(selected = null, selectedProject = null) }
 
     fun openStack(ids: List<String>) {
         _state.update { it.copy(stackIds = ids, view = ExploreView.LIST, selected = null) }

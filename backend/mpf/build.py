@@ -76,5 +76,16 @@ def run(conn: psycopg.Connection, sources_file: Path, out: Path, settings: confi
         except Exception as e:
             report["errors"].append(f"{entry['id']}: {e}")
 
-    report["snapshot"] = {k: v for k, v in snapshot.export(conn, out).items() if k in ("version", "count")}
+    # A source taken out of the file (a partner who left, sample data) leaves the map today,
+    # not after the usual missed checks.
+    configured = [e["id"] for e in [*cfg.get("partner", []), *cfg.get("crawl", [])]]
+    for row in conn.execute(
+        """SELECT DISTINCT l.source_id FROM listing l JOIN source s ON s.id = l.source_id
+           WHERE l.status = 'active' AND s.kind <> 'user_post' AND NOT (l.source_id = ANY(%s))""", (configured,),
+    ).fetchall():
+        retired = pipeline.RunReport(row["source_id"])
+        pipeline.expire_unseen(conn, row["source_id"], set(), 0, retired)
+        alerts.record(conn, retired, fx)
+        report["retired"] = {**report.get("retired", {}), row["source_id"]: retired.expired}
+    report["snapshot"] = {k: v for k, v in snapshot.export(conn, out).items() if k in ("version", "count", "projects")}
     return report

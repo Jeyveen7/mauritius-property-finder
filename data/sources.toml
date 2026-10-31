@@ -8,18 +8,10 @@
 # [[crawl]]    A website whose terms you have read and that allow indexing. The build
 #              refuses to crawl unless `terms_reviewed_by` and `terms_note` are filled in.
 
-# Fictional sample data so the app has something to show. Remove once real partners join.
-[[partner]]
-id = "sample-portal-a"
-name = "Sample portal A (fictional test data)"
-file = "../backend/seed/sample_feeds/portal_a.json"
-images_licensed = false
-
-[[partner]]
-id = "sample-portal-b"
-name = "Sample portal B (fictional test data)"
-file = "../backend/seed/sample_feeds/portal_b.json"
-images_licensed = false
+# No listing source has agreed to share yet. The map shows the official EDB lists of
+# approved projects (backend/seed/edb_projects.csv, built into every snapshot).
+# To try the app with fictional listings locally, point a partner at
+# ../backend/seed/sample_feeds/portal_a.json; never publish them.
 
 # [[partner]]
 # id = "agency-x"

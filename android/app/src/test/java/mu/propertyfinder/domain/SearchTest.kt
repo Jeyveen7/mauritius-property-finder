@@ -7,6 +7,7 @@ import mu.propertyfinder.data.Fx
 import mu.propertyfinder.data.Locality
 import mu.propertyfinder.data.Money
 import mu.propertyfinder.data.Personal
+import mu.propertyfinder.data.Project
 import mu.propertyfinder.data.SavedSearch
 import mu.propertyfinder.data.SearchFilters
 import mu.propertyfinder.data.SnapMeta
@@ -86,5 +87,18 @@ class SearchTest {
         assertEquals(listOf("fresh"), c.newMatches)
         assertEquals(listOf("saved"), c.priceDrops)
         assertEquals(listOf("sold"), c.gone)
+    }
+
+    @Test fun projectsSearchByPlaceAndClusterWithSchemeLabels() {
+        fun p(id: String, place: String, region: String, lat: Double) = Project(
+            id, "PDS", "Property Development Scheme", "Dev $id", place, "12 villas", "PDS certificate",
+            sourceUrl = "https://edbmauritius.org/x.pdf", locality = place, district = "D", region = region,
+            lat = lat, lon = 57.5, searchText = norm("Dev $id $place 12 villas"))
+        val list = listOf(p("a", "Grand Baie", "North", -20.0), p("b", "Tamarin", "West", -20.33))
+        assertEquals(listOf("a"), list.filter { Search.projectMatches(it, emptyList(), "grand ba") }.map { it.id })
+        assertEquals(listOf("b"), list.filter { Search.projectMatches(it, listOf("West"), null) }.map { it.id })
+        val pins = Search.projectClusters(list, 14.0)
+        assertEquals(listOf("PDS", "PDS"), pins.map { it.scheme })
+        assertEquals("Grand Baie · D", list[0].place)
     }
 }

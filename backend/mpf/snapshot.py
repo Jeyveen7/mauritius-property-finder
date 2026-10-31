@@ -4,6 +4,8 @@
                                  the apps check it on start to see if anything changed)
     <out>/properties.json.gz    every active property with its full detail
     <out>/localities.json.gz    the gazetteer, with area photos, for search and posting
+    <out>/projects.json.gz      official EDB lists of approved schemes open to foreign buyers
+                                 (no prices; facts only, see mpf/official.py)
 
 The apps download these when the version changes, keep them on the device, and do all
 searching, map grouping and cost estimates locally. Host the folder anywhere static
@@ -18,6 +20,7 @@ from pathlib import Path
 
 import psycopg
 
+from mpf import official
 from mpf.detail import area_photos, property_detail
 from mpf.domain.text import norm
 from mpf.repo import get_setting, load_fx, load_rules
@@ -25,6 +28,7 @@ from mpf.repo import get_setting, load_fx, load_rules
 ATTRIBUTION = [
     "Map data and places © OpenStreetMap contributors (ODbL)",
     "Area photos: Wikimedia Commons contributors, licences as credited",
+    official.ATTRIBUTION,
 ]
 FORMAT = 1
 
@@ -81,11 +85,14 @@ def export(conn: psycopg.Connection, out: Path, public_base_url: str = "") -> di
 
     props_raw = _write_gz(out / "properties.json.gz", properties)
     locs_raw = _write_gz(out / "localities.json.gz", localities)
+    projects = official.projects(conn)
+    projects_raw = _write_gz(out / "projects.json.gz", projects)
     meta = {
         "format": FORMAT,
-        "version": hashlib.sha256(props_raw + locs_raw).hexdigest()[:16],
+        "version": hashlib.sha256(props_raw + locs_raw + projects_raw).hexdigest()[:16],
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "count": len(properties),
+        "projects": len(projects),
         "rules": {"label": rules.label, "registration_duty_pct": str(rules.registration_duty_pct)},
         "fx": {"day": fx.day.isoformat(), "mur_per_unit": {k: str(v) for k, v in fx.mur_per_unit.items()}},
         "assumed_mortgage_rate_pct": str(get_setting(conn, "assumed_mortgage_rate_pct")),
