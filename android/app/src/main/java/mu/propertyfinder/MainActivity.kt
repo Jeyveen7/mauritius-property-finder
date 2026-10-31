@@ -29,6 +29,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         handle(intent)
+        // Start the browser engine while the user looks at the map, so the listing sites open faster later.
+        android.os.Looper.myQueue().addIdleHandler {
+            runCatching { android.webkit.WebView(this).destroy() }
+            false
+        }
         setContent {
             PropertyFinderTheme {
                 AppNav(sharedContent = sharedContent, onSharedConsumed = { shared.value = null },

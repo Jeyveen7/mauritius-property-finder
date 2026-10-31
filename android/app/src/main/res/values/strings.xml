@@ -204,4 +204,24 @@
     <string name="welcome_start">Where are you looking?</string>
     <string name="welcome_later">Look around first</string>
     <string name="saved_by_you">Saved by you</string>
+    <string name="n_saved_here">%1$d saved here</string>
+    <string name="list_saved">List · %1$d saved</string>
+    <string name="any_property">Any property</string>
+    <string name="search_pill_hint">Town, type of property, budget</string>
+    <string name="see_listings">See listings on 3 sites</string>
+    <string name="close">Close</string>
+    <string name="clear_all">Clear all</string>
+    <string name="q_where">Where</string>
+    <string name="q_where_long">Where are you looking?</string>
+    <string name="q_what">What</string>
+    <string name="q_what_long">What kind of property?</string>
+    <string name="or_region">Or a whole region</string>
+    <string name="region_north">North</string>
+    <string name="region_west">West</string>
+    <string name="region_centre">Centre</string>
+    <string name="region_east">East</string>
+    <string name="region_south">South</string>
+    <string name="foreigners_hint">Only schemes open to non-citizens (PDS, RES, IRS, Smart City)</string>
+    <string name="show_listings">Show listings</string>
+    <string name="more_sites">Facebook and Instagram</string>
 </resources>

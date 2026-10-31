@@ -204,4 +204,24 @@
     <string name="welcome_start">Où cherchez-vous ?</string>
     <string name="welcome_later">D\'abord explorer</string>
     <string name="saved_by_you">Gardé par vous</string>
+    <string name="n_saved_here">%1$d gardés ici</string>
+    <string name="list_saved">Liste · %1$d gardés</string>
+    <string name="any_property">Tout type de bien</string>
+    <string name="search_pill_hint">Ville, type de bien, budget</string>
+    <string name="see_listings">Voir les annonces sur 3 sites</string>
+    <string name="close">Fermer</string>
+    <string name="clear_all">Tout effacer</string>
+    <string name="q_where">Où</string>
+    <string name="q_where_long">Où cherchez-vous ?</string>
+    <string name="q_what">Quoi</string>
+    <string name="q_what_long">Quel type de bien ?</string>
+    <string name="or_region">Ou toute une région</string>
+    <string name="region_north">Nord</string>
+    <string name="region_west">Ouest</string>
+    <string name="region_centre">Centre</string>
+    <string name="region_east">Est</string>
+    <string name="region_south">Sud</string>
+    <string name="foreigners_hint">Seulement les dispositifs ouverts aux étrangers (PDS, RES, IRS, Smart City)</string>
+    <string name="show_listings">Voir les annonces</string>
+    <string name="more_sites">Facebook et Instagram</string>
 </resources>

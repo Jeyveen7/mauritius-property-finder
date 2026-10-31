@@ -44,6 +44,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import mu.propertyfinder.R
 import mu.propertyfinder.domain.Elsewhere
 
@@ -53,12 +66,47 @@ import mu.propertyfinder.domain.Elsewhere
  * map" reads only the page the user is looking at, when they tap it, and the user checks the
  * facts before the listing is kept on their phone (Add a post).
  */
+/**
+ * The search's listings, full screen: what was searched (tap to change it), a tab per site,
+ * and the site's own results page with Save to my map. Facebook and Instagram are in the menu,
+ * as they open in their own apps.
+ */
 @Composable
-fun BrowseScreen(start: Int, onClose: () -> Unit, onSave: (String) -> Unit) {
+fun ResultsScreen(onBack: () -> Unit, onEdit: () -> Unit, onSave: (String) -> Unit) {
     val vm = exploreViewModel()
-    val links = remember { vm.elsewhere() }
-    SiteBrowser(links, start, onSave, onBackOut = onClose, modifier = Modifier.fillMaxSize()) {
-        IconButton(onClick = onClose) { Icon(Icons.Filled.Close, stringResource(R.string.back)) }
+    val s by vm.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var menu by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
+            Surface(shape = RoundedCornerShape(24.dp), color = Color.White, shadowElevation = 3.dp,
+                    modifier = Modifier.weight(1f).clickable(onClick = onEdit)) {
+                Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(s.panelQuery.ifBlank { s.filters.regions.joinToString(", ").ifBlank { stringResource(R.string.all_mauritius) } },
+                             fontWeight = FontWeight.Bold, maxLines = 1)
+                        Text(searchSummary(s, withPlace = false).ifBlank { stringResource(R.string.any_property) },
+                             fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    }
+                    Icon(Icons.Filled.Tune, stringResource(R.string.filters), tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+            Box {
+                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.more_sites)) }
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    s.panelLinks.filter { !it.inApp }.forEach { link ->
+                        DropdownMenuItem(text = { Text("${link.site} ↗") }, onClick = {
+                            menu = false
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link.url)))
+                        })
+                    }
+                }
+            }
+        }
+        SiteBrowser(s.panelLinks, 0, onSave, onBackOut = onBack, modifier = Modifier.weight(1f)) {
+            androidx.compose.foundation.layout.Spacer(Modifier.padding(start = 8.dp))
+        }
     }
 }
 

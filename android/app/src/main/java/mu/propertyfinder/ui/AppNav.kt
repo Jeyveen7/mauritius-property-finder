@@ -26,7 +26,8 @@ import mu.propertyfinder.R
 import mu.propertyfinder.SharedContent
 import mu.propertyfinder.ui.detail.DetailScreen
 import mu.propertyfinder.ui.detail.ProjectScreen
-import mu.propertyfinder.ui.explore.BrowseScreen
+import mu.propertyfinder.ui.explore.ResultsScreen
+import mu.propertyfinder.ui.explore.SearchScreen
 import mu.propertyfinder.ui.explore.ExploreScreen
 import mu.propertyfinder.ui.post.AddPostScreen
 import mu.propertyfinder.ui.saved.SavedScreen
@@ -66,7 +67,7 @@ fun AppNav(
 
     Scaffold(
         bottomBar = {
-            if (route?.startsWith("property") != true && route?.startsWith("browse") != true) {
+            if (route in tabs.map { it.route }) {
                 NavigationBar {
                     tabs.forEach { tab ->
                         NavigationBarItem(
@@ -84,11 +85,15 @@ fun AppNav(
             val open: (String) -> Unit = { id -> nav.navigate("property/$id") }
             val saveFromSite: (String) -> Unit = { text -> onShare(SharedContent(text, null, read = true)) }
             composable("explore") {
-                ExploreScreen(onOpen = open, onBrowse = { i -> nav.navigate("browse/$i") }, onSave = saveFromSite)
+                ExploreScreen(onOpen = open, onSearch = { nav.navigate("search") }, onResults = { nav.navigate("results") })
             }
-            composable("browse/{index}") { backStack ->
-                BrowseScreen(start = backStack.arguments!!.getString("index")!!.toInt(), onClose = { nav.popBackStack() },
-                             onSave = saveFromSite)
+            composable("search") {
+                SearchScreen(onClose = { nav.popBackStack() }, onDone = {
+                    nav.navigate("results") { popUpTo("search") { inclusive = true } }
+                })
+            }
+            composable("results") {
+                ResultsScreen(onBack = { nav.popBackStack() }, onEdit = { nav.navigate("search") }, onSave = saveFromSite)
             }
             composable("saved") { SavedScreen(onOpen = open, onApplySearch = { go("explore") }) }
             composable("post") {

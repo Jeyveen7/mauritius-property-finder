@@ -54,9 +54,6 @@ data class Filters(
 
 enum class ExploreView { MAP, LIST }
 
-/** The other-sites results panel under the search: hidden, a one-line bar, or open. */
-enum class Panel { HIDDEN, BAR, OPEN }
-
 data class ExploreState(
     val filters: Filters = Filters(),
     val display: DisplayPrefs = DisplayPrefs(),
@@ -76,17 +73,17 @@ data class ExploreState(
     val loaded: Boolean = false,
     val dataDate: String? = null,
     val searchSavedAt: Long = 0,
-    val panel: Panel = Panel.HIDDEN,
     /** The town or words the panel searched for: set on a known town or the keyboard's Search key. */
     val panelQuery: String = "",
     val panelLinks: List<Elsewhere.Link> = emptyList(),
-    /** Towns matching what is being typed in the search box. */
-    val suggestions: List<Locality> = emptyList(),
     /** First visit: a short card saying what the app does. */
     val showWelcome: Boolean = false,
     /** Where the map flies when a town is searched: lat, lon. */
     val focus: Pair<Double, Double>? = null,
-)
+) {
+    /** The user has a search (a place or any filter) whose listings are on the other sites. */
+    val hasSearch: Boolean get() = panelQuery.isNotBlank() || (filters.activeCount > 0 && !filters.projects)
+}
 
 class ExploreViewModel(app: Application) : AndroidViewModel(app) {
     private val a = App.from(app)
@@ -124,7 +121,7 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 recompute()
                 if (restored != null) {
-                    commitSearch(open = false)
+                    commitSearch()
                 }
             }
         }
@@ -187,9 +184,7 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setFilters(f: Filters) {
         _state.update {
-            it.copy(filters = f, selected = null, selectedProject = null, stackIds = null,
-                    // A listing filter offers the other sites too; the panel follows every change.
-                    panel = if (it.panel == Panel.HIDDEN && f.activeCount > 0 && !f.projects) Panel.BAR else it.panel)
+            it.copy(filters = f, selected = null, selectedProject = null, stackIds = null)
         }
         refreshPanel()
         persist()
@@ -207,25 +202,29 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
                            minBedrooms = s.minBedrooms, foreign = s.foreignEligible))
     }
 
-    fun setQuery(q: String) {
+    /** Towns whose name or another name starts with what was typed, best first. */
+    fun towns(q: String): List<Locality> {
         val nq = norm(q)
-        val exact = nq.isNotEmpty() && localities.any { l -> norm(l.name) == nq }
-        val suggestions = if (nq.length < 2 || exact) emptyList() else localities
-            .filter { l -> (listOf(l.name) + l.aliases).any { n -> norm(n).split(' ').any { it.startsWith(nq) } || norm(n).startsWith(nq) } }
-            .sortedBy { l -> if (norm(l.name).startsWith(nq)) 0 else 1 }
-            .take(5)
-        _state.update { it.copy(filters = it.filters.copy(q = q), suggestions = suggestions) }
-        recompute()
-        // Typing a whole town name ("Vacoas") searches the other sites straight away.
-        if (nq.isNotEmpty() && localities.any { l -> norm(l.name) == nq || l.aliases.any { norm(it) == nq } }) commitSearch()
-        else if (q.isBlank()) commitSearch()
+        if (nq.length < 2) return emptyList()
+        return localities
+            .filter { l -> (listOf(l.name) + l.aliases).any { n -> norm(n).startsWith(nq) || norm(n).split(' ').any { it.startsWith(nq) } } }
+            .sortedWith(compareBy({ if (norm(it.name).startsWith(nq)) 0 else 1 }, { it.name.length }))
+            .take(6)
     }
 
-    /** A town picked from the suggestions under the search box. */
-    fun pickTown(l: Locality) {
-        _state.update { it.copy(filters = it.filters.copy(q = l.name), suggestions = emptyList()) }
+    /** The guided search's answer: place and every filter at once. */
+    fun runSearch(f: Filters) {
+        _state.update { it.copy(filters = f.copy(projects = false), view = ExploreView.MAP,
+                                selected = null, selectedProject = null, stackIds = null) }
         recompute()
         commitSearch()
+    }
+
+    fun clearSearch() {
+        _state.update { it.copy(filters = Filters(projects = projects.isNotEmpty() && all.isEmpty()), panelQuery = "") }
+        recompute()
+        refreshPanel()
+        persist()
     }
 
     fun dismissWelcome() {
@@ -235,25 +234,18 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun persist() = viewModelScope.launch { a.prefs.setLastSearch(json.encodeToString(Filters.serializer(), state.value.filters)) }
 
-    /** The keyboard's Search key, or a known town typed in full. [open] false only shows the bar. */
-    fun commitSearch(open: Boolean = true) {
+    /** Remembers the place searched for, points the other sites' links at it and flies the map there. */
+    private fun commitSearch() {
         val q = state.value.filters.q.trim()
         val nq = norm(q)
         val town = if (nq.isEmpty()) null else localities.firstOrNull { l -> norm(l.name) == nq || l.aliases.any { norm(it) == nq } }
         _state.update {
-            it.copy(panelQuery = q, suggestions = emptyList(), focus = town?.let { t -> t.lat to t.lon } ?: it.focus, panel = when {
-                q.isNotEmpty() -> if (open) Panel.OPEN else Panel.BAR
-                it.filters.activeCount > 0 -> if (it.panel == Panel.HIDDEN) Panel.BAR else it.panel
-                else -> Panel.HIDDEN
-            })
+            it.copy(panelQuery = q, focus = town?.let { t -> t.lat to t.lon } ?: it.focus)
         }
         refreshPanel()
         persist()
     }
 
-    fun openPanel() = _state.update { it.copy(panel = Panel.OPEN) }.also { refreshPanel() }
-    fun collapsePanel() = _state.update { it.copy(panel = Panel.BAR) }
-    fun closePanel() = _state.update { it.copy(panel = Panel.HIDDEN) }
 
     private fun refreshPanel() = _state.update { it.copy(panelLinks = elsewhere(it.panelQuery)) }
 
