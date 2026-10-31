@@ -102,19 +102,36 @@ class SearchTest {
         assertEquals("Grand Baie · D", list[0].place)
     }
 
-    @Test fun searchEverywhereLinksCarryTheFilters() {
-        val gb = Locality("Grand Baie", "Rivière du Rempart", "North", -20.0, 57.58, lexpressCity = "grand_baie")
-        val q = Elsewhere.Query("land", "grand baie", emptyList(), "5000000", "15000000", "MUR", foreign = true)
-        val links = Elsewhere.links(q, listOf(gb), { it.lexpressCity }, Converter(null)).associateBy { it.site }
-        assertEquals("https://www.lexpressproperty.com/en/buy-mauritius/residential_land-agricultural_land/" +
-                     "?city=grand_baie&price_min=5000000&price_max=15000000&currency=MUR&foreigners=yes",
+    @Test fun searchEverywhereLinksCarryEveryFilter() {
+        val vacoas = Locality("Vacoas", "Plaines Wilhems", "Centre", -20.3, 57.48, lexpressCity = "vacoas",
+                              propertycloudPath = "vacoas-phoenix/vacoas")
+        val land = Elsewhere.Query("land", "vacoas", emptyList(), "2000000", "15000000", "MUR", foreign = true,
+                                   minBedrooms = 3, minPlotM2 = 500)
+        val links = Elsewhere.links(land, listOf(vacoas), Converter(null)).associateBy { it.site }
+        // Bedrooms don't apply to land; plot size does.
+        assertEquals("https://www.lexpressproperty.com/en/buy-mauritius/residential_land-agricultural_land/?city=vacoas" +
+                     "&price_min=2000000&price_max=15000000&currency=MUR&foreigners=yes" +
+                     "&filters%5Bland_surface%5D%5Bge%5D=500&filters%5Bland_unit%5D%5Beq%5D=m2",
                      links.getValue("lexpressproperty.com").url)
-        assertEquals("https://www.propertycloud.mu/land-for-sale/north/foreigners", links.getValue("PropertyCloud").url)
-        assertEquals("terrain à vendre Grand Baie Maurice", links.getValue("Google").text)
-        assertEquals("https://www.google.com/search?q=terrain+%C3%A0+vendre+Grand+Baie+Maurice", links.getValue("Google").url)
+        assertEquals("https://www.propertycloud.mu/land-for-sale/vacoas-phoenix/vacoas/foreigners?minprice=2000000&maxprice=15000000&size=500",
+                     links.getValue("PropertyCloud").url)
+        // Westimmo doesn't list Vacoas: its Centre region, and only scheme land open to foreigners.
+        assertEquals("https://real-estate-mauritius.mu/en/buy-property-mauritius/?ctypmandat=v&ctyp=lpds" +
+                     "&cregion=bc%2Ccurep%2Cfloreal%2Cqb&price_min=2000000&price_max=15000000",
+                     links.getValue("Westimmo").url)
+        assertEquals(Elsewhere.Applies.ALL_BUT_SIZE, links.getValue("Westimmo").applies)
+        assertEquals("terrain à vendre Vacoas étrangers Maurice", links.getValue("Google").text)
+
+        val flats = Elsewhere.links(land.copy(type = "apartment", foreign = false), listOf(vacoas), Converter(null)).associateBy { it.site }
+        assertEquals("https://www.propertycloud.mu/apartments-for-sale/vacoas-phoenix/vacoas?minprice=2000000&maxprice=15000000&minbeds=3",
+                     flats.getValue("PropertyCloud").url)
+        assertTrue(flats.getValue("lexpressproperty.com").url.endsWith("&filters%5Bnb_bedrooms%5D%5Bge%5D=3"))
+        assertEquals("appartement à vendre Vacoas 3 chambres Maurice", flats.getValue("Instagram").text)
+
         // No town or region: the whole island, and a plain text search.
-        val any = Elsewhere.links(Elsewhere.Query(null, "", emptyList(), null, null, "MUR", false), emptyList(), { null }, Converter(null))
+        val any = Elsewhere.links(Elsewhere.Query(null, "", emptyList(), null, null, "MUR", false), emptyList(), Converter(null))
         assertEquals("https://www.propertycloud.mu/property-for-sale", any.first { it.site == "PropertyCloud" }.url)
+        assertEquals("https://real-estate-mauritius.mu/en/buy-property-mauritius/?ctypmandat=v", any.first { it.site == "Westimmo" }.url)
         assertEquals("immobilier à vendre Maurice", any.first { it.site == "Instagram" }.text)
     }
 }

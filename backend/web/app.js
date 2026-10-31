@@ -326,7 +326,17 @@ $("#sheet").addEventListener("click", (e) => {
 // does: nothing is copied from those sites, and the listings open on the sites themselves.
 const REGION_FR = { North: "Nord", West: "Ouest", Centre: "Centre", East: "Est", South: "Sud" };
 
-/** Mirrors the Android domain/Elsewhere.kt. */
+const WESTIMMO_REGION = { West: "78111e22,albio,flic,rivnoire,tamarin", North: "balac,calody,capmal,grandb,grandg,mapou,monc,perey,rivremp,troub",
+                          South: "belomb,mahebrg,Savannah", Centre: "bc,curep,floreal,qb", East: "belair,bellem,flacq,plf,rc" };
+/** Westimmo's property kinds; the PDS, RES, IRS and Smart City ones are those open to foreigners. */
+function westimmoTypes(type, foreign) {
+  return ({ land: foreign ? "lpds" : "ter,lpds",
+            apartment: foreign ? "apds,airs,ares,WFM,ppds,pirs" : "apt,r+2,apds,airs,ares,WFM,WEZ,ppds,pirs,WFK",
+            house: foreign ? "vpds,virs,vres,tpds,tirs" : "villa,vpds,virs,vres,ma,tpds,tirs" })[type]
+    ?? (foreign ? "apds,airs,ares,WFM,ppds,pirs,vpds,virs,vres,tpds,tirs,lpds" : null);
+}
+
+/** Every filter, in each site's own search parameters. Mirrors the Android domain/Elsewhere.kt. */
 function elsewhereLinks() {
   const f = state.filters, cf = currentFilters(), q = norm(f.q);
   const loc = q ? state.data?.localities.find((l) => norm(l.name) === q || l.aliases.some((a) => norm(a) === q)) : null;
@@ -334,7 +344,7 @@ function elsewhereLinks() {
   const place = loc?.name ?? (q ? f.q.trim() : region ? REGION_FR[region] : "");
   const mur = (whole) => (whole == null ? null : Math.round(convert({ minor: whole * 100, currency: cf.currency }, "MUR").minor / 100));
   const lo = mur(cf.min_price), hi = mur(cf.max_price);
-  const text = `${{ land: "terrain", house: "maison", apartment: "appartement" }[f.type] ?? "immobilier"} à vendre ${place} Maurice`.replace(/\s+/g, " ");
+  const beds = f.type === "land" ? null : f.beds;
   const url = (base, params = {}) => {
     const u = new URL(base);
     for (const [k, v] of Object.entries(params)) if (v != null && v !== "") u.searchParams.set(k, v);
@@ -343,14 +353,21 @@ function elsewhereLinks() {
   const lexTypes = { land: "residential_land-agricultural_land", apartment: "apartment-penthouse", house: "villa-townhouse_duplex" }[f.type]
     ?? "villa-townhouse_duplex-apartment-penthouse-residential_land";
   const pcType = { land: "land", apartment: "apartments", house: "houses" }[f.type] ?? "property";
+  const pcPlace = loc?.propertycloud_path ?? region?.toLowerCase();
+  const word = { land: "terrain", house: "maison", apartment: "appartement" }[f.type] ?? "immobilier";
+  const text = [word, "à vendre", place, beds && `${beds} chambres`, f.foreign && "étrangers", "Maurice"].filter(Boolean).join(" ").replace(/\s+/g, " ");
   return [
     { name: "lexpressproperty.com", note: t("ew_filters"),
       url: url(`https://www.lexpressproperty.com/en/buy-mauritius/${lexTypes}/`, { city: loc?.lexpress_city ?? region?.toLowerCase(),
-        price_min: lo, price_max: hi, currency: lo || hi ? "MUR" : null, foreigners: f.foreign ? "yes" : null }) },
-    { name: "PropertyCloud", note: t("ew_region"),
-      url: `https://www.propertycloud.mu/${pcType}-for-sale${region ? "/" + region.toLowerCase() : ""}${f.foreign ? "/foreigners" : ""}` },
-    { name: "Westimmo", note: t("ew_type"),
-      url: f.type === "land" ? "https://real-estate-mauritius.mu/en/buy-invest-mauritius/land-for-sale" : "https://real-estate-mauritius.mu/en/buy-property-mauritius/" },
+        price_min: lo, price_max: hi, currency: lo || hi ? "MUR" : null, foreigners: f.foreign ? "yes" : null,
+        "filters[nb_bedrooms][ge]": beds && Math.min(beds, 5) }) },
+    { name: "PropertyCloud", note: t("ew_filters"),
+      url: url(`https://www.propertycloud.mu/${pcType}-for-sale${pcPlace ? "/" + pcPlace : ""}${f.foreign ? "/foreigners" : ""}`,
+        { minprice: lo, maxprice: hi, minbeds: beds }) },
+    { name: "Westimmo", note: t("ew_filters"),
+      url: url("https://real-estate-mauritius.mu/en/buy-property-mauritius/", { ctypmandat: "v", ctyp: westimmoTypes(f.type, f.foreign),
+        localite: loc?.westimmo_localite, cregion: loc?.westimmo_localite ? null : WESTIMMO_REGION[region],
+        min_rooms: beds, price_min: lo, price_max: hi }) },
     { name: t("ew_fb_posts"), note: t("ew_text", { q: text }), url: url("https://www.facebook.com/search/posts/", { q: text }) },
     { name: "Facebook Marketplace", note: t("ew_text", { q: text }), url: url("https://www.facebook.com/marketplace/search/", { query: text }) },
     { name: "Instagram", note: t("ew_text", { q: text }), url: url("https://www.instagram.com/explore/search/keyword/", { q: text }) },

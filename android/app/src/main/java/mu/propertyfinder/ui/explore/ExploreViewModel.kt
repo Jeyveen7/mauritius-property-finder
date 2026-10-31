@@ -255,8 +255,9 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
     fun elsewhere(text: String = state.value.filters.q): List<Elsewhere.Link> {
         val q = query()
         return Elsewhere.links(
-            Elsewhere.Query(q.type, text, q.regions, q.minPrice, q.maxPrice, q.currency, q.foreignEligible),
-            localities, { it.lexpressCity }, converter,
+            Elsewhere.Query(q.type, text, q.regions, q.minPrice, q.maxPrice, q.currency, q.foreignEligible,
+                            minBedrooms = q.minBedrooms, minPlotM2 = q.minPlotM2?.toDouble()?.toLong()),
+            localities, converter,
         )
     }
 

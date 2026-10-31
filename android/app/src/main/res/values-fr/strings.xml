@@ -183,9 +183,8 @@
     <string name="everywhere">Chercher partout</string>
     <string name="everywhere_intro">Ouvre cette recherche sur chaque site. Les annonces sont les leurs, non vérifiées par nous : comparez et contactez le vendeur là-bas.</string>
     <string name="everywhere_add">Une annonce vous plaît ? Partagez-la vers cette appli (ou copiez-la dans Ajouter une annonce) pour la garder sur votre carte.</string>
-    <string name="ew_filters">Type, ville, budget et étrangers appliqués</string>
-    <string name="ew_region">Type, région et étrangers appliqués</string>
-    <string name="ew_type">Type appliqué ; affinez sur le site</string>
+    <string name="ew_filters">Tous vos filtres appliqués</string>
+    <string name="ew_no_size">Tous vos filtres sauf la surface du terrain</string>
     <string name="ew_text">Recherche « %1$s »</string>
     <string name="save_to_map">Garder sur ma carte</string>
     <string name="open_in_browser">Ouvrir dans le navigateur</string>

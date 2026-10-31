@@ -32,9 +32,9 @@ ATTRIBUTION = [
     official.ATTRIBUTION,
 ]
 FORMAT = 1
-# Each village's name in lexpressproperty.com search links ("Search everywhere" in the apps).
-# Only link parameters, checked against the site's own town list; nothing is copied from it.
-LEXPRESS_CITIES = Path(__file__).resolve().parents[1] / "seed" / "lexpress_cities.csv"
+# Each village's name in the listing sites' search links (the apps' "other sites" panel):
+# link parameters only, checked against each site's own town list; nothing is copied from them.
+SITE_PLACES = Path(__file__).resolve().parents[1] / "seed" / "site_places.csv"
 
 
 def _default(o):
@@ -80,14 +80,15 @@ def export(conn: psycopg.Connection, out: Path, public_base_url: str = "") -> di
         properties.append(d)
     properties.sort(key=lambda p: p["id"])
 
-    with open(LEXPRESS_CITIES, newline="", encoding="utf-8") as f:
-        lexpress = {r["locality"]: r["lexpress_city"] for r in csv.DictReader(f)}
+    with open(SITE_PLACES, newline="", encoding="utf-8") as f:
+        places = {r["locality"]: r for r in csv.DictReader(f)}
     localities = []
     for loc in conn.execute("SELECT * FROM locality ORDER BY name").fetchall():
         localities.append({"name": loc["name"], "district": loc["district"], "region": loc["region"],
                            "lat": loc["lat"], "lon": loc["lon"], "aliases": loc["aliases"],
                            "search_text": loc["search_text"] or norm(loc["name"]),
-                           "lexpress_city": lexpress.get(loc["name"]),
+                           **{k: (places.get(loc["name"], {}).get(k) or None)
+                              for k in ("lexpress_city", "propertycloud_path", "westimmo_localite")},
                            "area_photos": area_photos(conn, loc["id"])})
 
     props_raw = _write_gz(out / "properties.json.gz", properties)

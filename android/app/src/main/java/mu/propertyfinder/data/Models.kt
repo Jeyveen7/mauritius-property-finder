@@ -199,8 +199,10 @@ data class Locality(
     val aliases: List<String> = emptyList(),
     @SerialName("search_text") val searchText: String = "",
     @SerialName("area_photos") val areaPhotos: List<AreaPhoto> = emptyList(),
-    /** This place's name in lexpressproperty.com search links, when the site knows it. */
+    /** This place in the listing sites' own search links, when the site knows it. */
     @SerialName("lexpress_city") val lexpressCity: String? = null,
+    @SerialName("propertycloud_path") val propertycloudPath: String? = null,
+    @SerialName("westimmo_localite") val westimmoLocalite: String? = null,
 )
 
 /** Filters as stored with a saved search. Budgets are in [currency]'s whole units. */

@@ -46,9 +46,8 @@ fun ElsewhereSheet(links: List<Elsewhere.Link>, onDismiss: () -> Unit, onBrowse:
                         Text(if (link.inApp) link.site else "${link.site} ↗", fontWeight = FontWeight.Bold)
                         Text(
                             when (link.applies) {
-                                Elsewhere.Applies.FILTERS -> stringResource(R.string.ew_filters)
-                                Elsewhere.Applies.REGION -> stringResource(R.string.ew_region)
-                                Elsewhere.Applies.TYPE -> stringResource(R.string.ew_type)
+                                Elsewhere.Applies.ALL -> stringResource(R.string.ew_filters)
+                                Elsewhere.Applies.ALL_BUT_SIZE -> stringResource(R.string.ew_no_size)
                                 Elsewhere.Applies.TEXT -> stringResource(R.string.ew_text, link.text)
                             },
                             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp,
