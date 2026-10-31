@@ -251,7 +251,13 @@ function showList(ids = null) {
   $("#list").innerHTML = `<div class="cards">${intro}${list.length ? sorted.map(cardHtml).join("") : `<p>${t("no_results")}</p>`}</div>`;
   renderChrome();
 }
-function refresh() { if (state.data) (state.view === "map" ? loadMap() : showList(state.stack)); }
+function refresh() {
+  if (!state.data) return;
+  state.view === "map" ? loadMap() : showList(state.stack);
+  // Pick up the search where the user left it on the next visit.
+  const f = state.filters;
+  store.set("lastSearch", { ...f, regions: [...f.regions] });
+}
 
 function renderChrome() {
   const f = state.filters;
@@ -279,7 +285,12 @@ $("#quickChips").addEventListener("click", (e) => {
 });
 $("#toggleView").onclick = () => { if (state.view === "map") showList(); else { state.view = "map"; renderChrome(); loadMap(); } };
 let qTimer;
-$("#q").addEventListener("input", (e) => { state.filters.q = e.target.value; clearTimeout(qTimer); qTimer = setTimeout(refresh, 250); });
+$("#q").addEventListener("input", (e) => {
+  state.filters.q = e.target.value; clearTimeout(qTimer); qTimer = setTimeout(refresh, 250);
+  // A whole town name (typed, or picked from the suggestions) moves the map there.
+  const town = state.data?.localities.find((l) => norm(l.name) === norm(e.target.value));
+  if (town) { map.flyTo({ center: [town.lon, town.lat], zoom: 13 }); e.target.blur(); }
+});
 $("#saveSearch").onclick = () => {
   const f = currentFilters(), searches = personal.searches;
   if (!searches.some((s) => JSON.stringify(s.filters) === JSON.stringify(f))) {
@@ -374,11 +385,33 @@ function elsewhereLinks() {
     { name: "Google", note: t("ew_text", { q: text }), url: url("https://www.google.com/search", { q: text }) },
   ];
 }
+/** First visit only: what the app does, then straight to the search box. */
+function openWelcome() {
+  const s = $("#sheet");
+  s.innerHTML = `<div class="inner">
+    <h2 style="margin:0">${t("welcome_title")}</h2>
+    <div>🌐 ${t("welcome_search")}</div><div>＋ ${t("welcome_save")}</div><div>✔︎ ${t("welcome_projects")}</div>
+    <div class="row"><button class="btn" data-close data-welcome-start>${t("welcome_start")}</button>
+      <button class="btn secondary" data-close>${t("welcome_later")}</button></div></div>`;
+  store.set("welcomeSeen", true);
+  if (!s.open) s.showModal();
+}
+document.addEventListener("click", (e) => { if (e.target.closest("[data-welcome-start]")) setTimeout(() => $("#q").focus(), 50); });
+
+/** "Vacoas · Apartments · 3+ bedrooms · Rs 5M – 15M": what the links search for. */
+function searchSummary() {
+  const f = state.filters;
+  return [f.q.trim() || [...f.regions].join(", ") || t("all_mauritius"), f.type && t(f.type),
+          f.type !== "land" && f.beds && t("beds_min", { n: f.beds }), f.band !== null && bandLabel(f.band), f.foreign && t("foreigners")]
+    .filter(Boolean).join(" · ");
+}
+
 function openElsewhere() {
   const s = $("#sheet");
   s.innerHTML = `<div class="inner">
     <div class="row" style="align-items:center"><h2 style="margin:0;flex:1">${t("everywhere")}</h2><button class="btn secondary" data-close>${t("close")}</button></div>
     <div class="muted">${t("everywhere_intro")}</div>
+    <strong>${esc(searchSummary())}</strong>
     ${elsewhereLinks().map((l) => `<a class="panel elsewhere" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">
       <strong>${esc(l.name)} ↗</strong><span class="muted">${esc(l.note)}</span></a>`).join("")}
     <div class="muted">${t("everywhere_add")}</div></div>`;
@@ -606,8 +639,16 @@ document.querySelector(".tabs").addEventListener("click", (e) => {
 renderChrome();
 loadData().then((data) => {
   state.data = data;
-  // Until listing sources join, open on the official projects rather than an empty map.
-  if (!data.properties.length && !personal.mine.length && data.projects.length) state.filters.projects = true;
+  $("#townList").innerHTML = data.localities.map((l) => `<option value="${esc(l.name)}">${esc(l.district)}</option>`).join("");
+  const last = store.get("lastSearch");
+  if (last) {
+    Object.assign(state.filters, last, { regions: new Set(last.regions || []) });
+    $("#q").value = state.filters.q || "";
+  } else if (!data.properties.length && !personal.mine.length && data.projects.length) {
+    // Until listing sources join, open on the official projects rather than an empty map.
+    state.filters.projects = true;
+  }
+  if (!store.get("welcomeSeen")) openWelcome();
   const notes = newsSinceLastVisit();
   if (notes.length) toast(notes.join(" "));
   refresh();

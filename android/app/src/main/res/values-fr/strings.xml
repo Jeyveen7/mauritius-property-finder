@@ -194,4 +194,14 @@
     <string name="panel_bar_any">Votre recherche sur les autres sites</string>
     <string name="panel_collapse">Afficher la carte</string>
     <string name="panel_hide">Masquer</string>
+    <string name="clear_search">Effacer la recherche</string>
+    <string name="all_mauritius">Toute l\'île Maurice</string>
+    <string name="bedrooms_min">%1$d+ chambres</string>
+    <string name="welcome_title">Tous les biens à Maurice, au même endroit</string>
+    <string name="welcome_search">Tapez une ville et vos filtres. Nous cherchons pour vous sur lexpressproperty, PropertyCloud et Westimmo, avec tous vos filtres.</string>
+    <string name="welcome_save">Un bien vous plaît ? « Garder sur ma carte » le place à côté des autres, avec la mensualité calculée.</string>
+    <string name="welcome_projects">Parcourez la liste officielle des projets agréés ouverts aux étrangers.</string>
+    <string name="welcome_start">Où cherchez-vous ?</string>
+    <string name="welcome_later">D\'abord explorer</string>
+    <string name="saved_by_you">Gardé par vous</string>
 </resources>

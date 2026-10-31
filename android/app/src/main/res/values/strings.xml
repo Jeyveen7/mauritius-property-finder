@@ -194,4 +194,14 @@
     <string name="panel_bar_any">Your search on other sites</string>
     <string name="panel_collapse">Show the map</string>
     <string name="panel_hide">Hide</string>
+    <string name="clear_search">Clear search</string>
+    <string name="all_mauritius">All of Mauritius</string>
+    <string name="bedrooms_min">%1$d+ bedrooms</string>
+    <string name="welcome_title">Every property in Mauritius, in one place</string>
+    <string name="welcome_search">Type a town and set your filters. We search lexpressproperty, PropertyCloud and Westimmo for you, with every filter.</string>
+    <string name="welcome_save">Like one? Tap Save to my map and keep it next to the others, with the monthly cost worked out.</string>
+    <string name="welcome_projects">Browse the government\'s list of approved projects that foreigners can buy.</string>
+    <string name="welcome_start">Where are you looking?</string>
+    <string name="welcome_later">Look around first</string>
+    <string name="saved_by_you">Saved by you</string>
 </resources>

@@ -115,7 +115,8 @@ fun PropertyCardRow(card: PropertyCard, display: DisplayPrefs, converter: Conver
                  color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
                 if (card.foreignEligible) Badge(stringResource(R.string.foreigners_can_buy), EligibleBg, EligibleFg)
-                if (card.unverified) Badge(stringResource(R.string.badge_unverified), WarnBg, WarnFg)
+                if (card.mine) Badge(stringResource(R.string.saved_by_you), WarnBg, WarnFg)
+                else if (card.unverified) Badge(stringResource(R.string.badge_unverified), WarnBg, WarnFg)
                 if (isNew(card.firstSeenAt)) Badge(stringResource(R.string.badge_new), Ink, Color.White)
                 Badge(if (card.sources == 1) stringResource(R.string.on_one_site)
                       else stringResource(R.string.on_sites, card.sources), Color(0xFFECEFEE), Color(0xFF3E4A48))

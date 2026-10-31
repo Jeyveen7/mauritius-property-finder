@@ -19,6 +19,8 @@ class Prefs(private val context: Context) {
     private val phoneVerified = booleanPreferencesKey("phone_verified")
     private val currency = stringPreferencesKey("currency")
     private val plotUnit = stringPreferencesKey("plot_unit")
+    private val lastSearch = stringPreferencesKey("last_search")
+    private val welcomeSeen = booleanPreferencesKey("welcome_seen")
 
     val display: Flow<DisplayPrefs> = context.store.data.map {
         DisplayPrefs(currency = it[currency] ?: "MUR", plotUnit = it[plotUnit] ?: "m2")
@@ -32,4 +34,11 @@ class Prefs(private val context: Context) {
 
     suspend fun setCurrency(value: String) = context.store.edit { it[currency] = value }
     suspend fun setPlotUnit(value: String) = context.store.edit { it[plotUnit] = value }
+
+    /** The Explore search as the user left it (JSON), restored on the next visit. */
+    suspend fun lastSearch(): String? = context.store.data.first()[lastSearch]
+    suspend fun setLastSearch(value: String) = context.store.edit { it[lastSearch] = value }
+
+    suspend fun welcomeSeen(): Boolean = context.store.data.first()[welcomeSeen] ?: false
+    suspend fun setWelcomeSeen() = context.store.edit { it[welcomeSeen] = true }
 }

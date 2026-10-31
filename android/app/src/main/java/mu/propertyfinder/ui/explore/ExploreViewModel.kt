@@ -13,7 +13,10 @@ import mu.propertyfinder.data.Card
 import mu.propertyfinder.data.Detail
 import mu.propertyfinder.data.DisplayPrefs
 import mu.propertyfinder.data.Fx
+import mu.propertyfinder.data.Locality
 import mu.propertyfinder.data.MapItem
+import mu.propertyfinder.data.json
+import kotlinx.serialization.Serializable
 import mu.propertyfinder.data.Project
 import mu.propertyfinder.data.SearchFilters
 import mu.propertyfinder.data.card
@@ -32,6 +35,7 @@ val plotBands = mapOf(
     "arpent" to listOf(0.25, 0.5, 1.0),
 )
 
+@Serializable
 data class Filters(
     val type: String? = null,
     val regions: Set<String> = emptySet(),
@@ -76,6 +80,10 @@ data class ExploreState(
     /** The town or words the panel searched for: set on a known town or the keyboard's Search key. */
     val panelQuery: String = "",
     val panelLinks: List<Elsewhere.Link> = emptyList(),
+    /** Towns matching what is being typed in the search box. */
+    val suggestions: List<Locality> = emptyList(),
+    /** First visit: a short card saying what the app does. */
+    val showWelcome: Boolean = false,
     /** Where the map flies when a town is searched: lat, lon. */
     val focus: Pair<Double, Double>? = null,
 )
@@ -87,7 +95,7 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
 
     private var all: List<Detail> = emptyList()
     private var projects: List<Project> = emptyList()
-    private var localities: List<mu.propertyfinder.data.Locality> = emptyList()
+    private var localities: List<Locality> = emptyList()
     private var openedOnProjects = false
     private var viewport: Pair<DoubleArray, Double>? = null
 
@@ -101,15 +109,23 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
                 all = ((snap?.properties ?: emptyList()) + mine).filter { it.id !in hidden }
                 projects = snap?.projects.orEmpty()
                 localities = snap?.localities.orEmpty()
-                // Until listing sources join, open on the official projects rather than an empty map.
-                val startOnProjects = snap != null && !openedOnProjects && all.isEmpty() && projects.isNotEmpty()
+                val firstLoad = snap != null && !openedOnProjects
                 if (snap != null) openedOnProjects = true
+                // Pick up the search where the user left it; otherwise, until listing sources join,
+                // open on the official projects rather than an empty map.
+                val restored = if (firstLoad) a.prefs.lastSearch()?.let { runCatching { json.decodeFromString<Filters>(it) }.getOrNull() } else null
+                val startOnProjects = firstLoad && restored == null && all.isEmpty() && projects.isNotEmpty()
+                val welcome = firstLoad && !a.prefs.welcomeSeen()
                 _state.update {
                     it.copy(fx = snap?.meta?.fx, loaded = snap != null, dataDate = snap?.meta?.generatedAt?.take(10),
                             hasProjects = projects.isNotEmpty(),
-                            filters = if (startOnProjects) it.filters.copy(projects = true) else it.filters)
+                            showWelcome = if (firstLoad) welcome else it.showWelcome,
+                            filters = restored ?: if (startOnProjects) it.filters.copy(projects = true) else it.filters)
                 }
                 recompute()
+                if (restored != null) {
+                    commitSearch(open = false)
+                }
             }
         }
     }
@@ -176,6 +192,7 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
                     panel = if (it.panel == Panel.HIDDEN && f.activeCount > 0 && !f.projects) Panel.BAR else it.panel)
         }
         refreshPanel()
+        persist()
         recompute()
     }
 
@@ -191,27 +208,47 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun setQuery(q: String) {
-        _state.update { it.copy(filters = it.filters.copy(q = q)) }
+        val nq = norm(q)
+        val exact = nq.isNotEmpty() && localities.any { l -> norm(l.name) == nq }
+        val suggestions = if (nq.length < 2 || exact) emptyList() else localities
+            .filter { l -> (listOf(l.name) + l.aliases).any { n -> norm(n).split(' ').any { it.startsWith(nq) } || norm(n).startsWith(nq) } }
+            .sortedBy { l -> if (norm(l.name).startsWith(nq)) 0 else 1 }
+            .take(5)
+        _state.update { it.copy(filters = it.filters.copy(q = q), suggestions = suggestions) }
         recompute()
         // Typing a whole town name ("Vacoas") searches the other sites straight away.
-        val nq = norm(q)
         if (nq.isNotEmpty() && localities.any { l -> norm(l.name) == nq || l.aliases.any { norm(it) == nq } }) commitSearch()
         else if (q.isBlank()) commitSearch()
     }
 
-    /** The keyboard's Search key, or a known town typed in full. */
-    fun commitSearch() {
+    /** A town picked from the suggestions under the search box. */
+    fun pickTown(l: Locality) {
+        _state.update { it.copy(filters = it.filters.copy(q = l.name), suggestions = emptyList()) }
+        recompute()
+        commitSearch()
+    }
+
+    fun dismissWelcome() {
+        _state.update { it.copy(showWelcome = false) }
+        viewModelScope.launch { a.prefs.setWelcomeSeen() }
+    }
+
+    private fun persist() = viewModelScope.launch { a.prefs.setLastSearch(json.encodeToString(Filters.serializer(), state.value.filters)) }
+
+    /** The keyboard's Search key, or a known town typed in full. [open] false only shows the bar. */
+    fun commitSearch(open: Boolean = true) {
         val q = state.value.filters.q.trim()
         val nq = norm(q)
         val town = if (nq.isEmpty()) null else localities.firstOrNull { l -> norm(l.name) == nq || l.aliases.any { norm(it) == nq } }
         _state.update {
-            it.copy(panelQuery = q, focus = town?.let { t -> t.lat to t.lon } ?: it.focus, panel = when {
-                q.isNotEmpty() -> Panel.OPEN
+            it.copy(panelQuery = q, suggestions = emptyList(), focus = town?.let { t -> t.lat to t.lon } ?: it.focus, panel = when {
+                q.isNotEmpty() -> if (open) Panel.OPEN else Panel.BAR
                 it.filters.activeCount > 0 -> if (it.panel == Panel.HIDDEN) Panel.BAR else it.panel
                 else -> Panel.HIDDEN
             })
         }
         refreshPanel()
+        persist()
     }
 
     fun openPanel() = _state.update { it.copy(panel = Panel.OPEN) }.also { refreshPanel() }

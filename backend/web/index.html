@@ -19,7 +19,8 @@
     <header class="search">
       <div class="row">
         <label class="field"><span class="sr" data-t="search_hint"></span>
-          <input id="q" type="search" autocomplete="off" data-tp="search_hint"></label>
+          <input id="q" type="search" autocomplete="off" list="townList" data-tp="search_hint"></label>
+        <datalist id="townList"></datalist>
         <button id="filtersBtn" class="square" aria-label="Filters">⚙︎<span id="filterCount" class="badge" hidden></span></button>
       </div>
       <div class="chips" id="quickChips"></div>

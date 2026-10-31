@@ -53,6 +53,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.material.icons.filled.Place
+import mu.propertyfinder.data.Locality
+import mu.propertyfinder.domain.Budgets
+import mu.propertyfinder.ui.unitLabels
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -83,6 +89,7 @@ fun ExploreScreen(onOpen: (String) -> Unit, onBrowse: (Int) -> Unit, onSave: (St
     val converter = remember(s.fx) { Converter(s.fx) }
     var sheetOpen by remember { mutableStateOf(false) }
     var elsewhereOpen by remember { mutableStateOf(false) }
+    val searchFocus = remember { FocusRequester() }
     val elsewhereButton = @Composable {
         Surface(shape = RoundedCornerShape(50), shadowElevation = 6.dp) {
             IconButton(onClick = { elsewhereOpen = true }) {
@@ -158,7 +165,8 @@ fun ExploreScreen(onOpen: (String) -> Unit, onBrowse: (Int) -> Unit, onSave: (St
         }
 
         SearchHeader(
-            query = s.filters.q, onQuery = vm::setQuery, onSearch = vm::commitSearch, activeFilters = s.filters.activeCount,
+            query = s.filters.q, onQuery = vm::setQuery, onSearch = { vm.commitSearch() }, activeFilters = s.filters.activeCount,
+            suggestions = s.suggestions, onPick = vm::pickTown, focusRequester = searchFocus,
             onFilters = { sheetOpen = true },
             quickChips = {
                 val f = s.filters
@@ -182,9 +190,14 @@ fun ExploreScreen(onOpen: (String) -> Unit, onBrowse: (Int) -> Unit, onSave: (St
             // The other sites' own results for this search, under the map. Their pages, unchanged.
             Surface(shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp), shadowElevation = 12.dp,
                     modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.66f)) {
-                SiteBrowser(s.panelLinks, 0, onSave, onBackOut = vm::collapsePanel, modifier = Modifier.fillMaxSize()) {
-                    IconButton(onClick = vm::collapsePanel) {
-                        Icon(Icons.Filled.ExpandMore, stringResource(R.string.panel_collapse))
+                Column {
+                    Text(searchSummary(s), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp))
+                    SiteBrowser(s.panelLinks, 0, onSave, onBackOut = vm::collapsePanel, modifier = Modifier.fillMaxSize()) {
+                        IconButton(onClick = vm::collapsePanel) {
+                            Icon(Icons.Filled.ExpandMore, stringResource(R.string.panel_collapse))
+                        }
                     }
                 }
             }
@@ -263,6 +276,10 @@ fun ExploreScreen(onOpen: (String) -> Unit, onBrowse: (Int) -> Unit, onSave: (St
     if (sheetOpen) {
         FilterSheet(state = s, vm = vm, onDismiss = { sheetOpen = false })
     }
+    if (s.showWelcome) {
+        WelcomeDialog(projects = s.hasProjects, onStart = { vm.dismissWelcome(); runCatching { searchFocus.requestFocus() } },
+                      onDismiss = vm::dismissWelcome)
+    }
     if (elsewhereOpen) {
         ElsewhereSheet(links = vm.elsewhere(), onDismiss = { elsewhereOpen = false },
                        onBrowse = { i -> elsewhereOpen = false; onBrowse(i) })
@@ -278,6 +295,9 @@ private fun SearchHeader(
     onFilters: () -> Unit,
     quickChips: @Composable () -> Unit,
     opaque: Boolean,
+    suggestions: List<Locality> = emptyList(),
+    onPick: (Locality) -> Unit = {},
+    focusRequester: FocusRequester? = null,
 ) {
     val focus = LocalFocusManager.current
     Surface(color = if (opaque) MaterialTheme.colorScheme.background else Color.Transparent) {
@@ -290,12 +310,17 @@ private fun SearchHeader(
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { onSearch(); focus.clearFocus() }),
                         leadingIcon = { Icon(Icons.Filled.Search, null) },
+                        trailingIcon = {
+                            if (query.isNotEmpty()) IconButton(onClick = { onQuery("") }) {
+                                Icon(Icons.Filled.Close, stringResource(R.string.clear_search))
+                            }
+                        },
                         placeholder = { Text(stringResource(R.string.search_hint)) },
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.White, unfocusedContainerColor = Color.White,
                             focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
                         ),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().let { m -> focusRequester?.let { m.focusRequester(it) } ?: m },
                     )
                 }
                 Surface(shape = RoundedCornerShape(14.dp), shadowElevation = 3.dp) {
@@ -306,9 +331,38 @@ private fun SearchHeader(
                     }
                 }
             }
+            if (suggestions.isNotEmpty()) {
+                // Towns as you type: one tap searches there and puts the keyboard away.
+                Surface(shape = RoundedCornerShape(14.dp), shadowElevation = 6.dp, color = Color.White) {
+                    Column {
+                        suggestions.forEach { l ->
+                            Row(Modifier.fillMaxWidth().clickable { focus.clearFocus(); onPick(l) }.padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Filled.Place, null, tint = MaterialTheme.colorScheme.primary)
+                                Text(l.name, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 12.dp))
+                                Text(" · ${l.district}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                            }
+                        }
+                    }
+                }
+            }
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 quickChips()
             }
         }
     }
+}
+
+/** "Vacoas · Apartments · 3+ bedrooms · Rs 5M – 15M · Open to foreigners": what the panel searched for. */
+@Composable
+private fun searchSummary(s: ExploreState): String {
+    val f = s.filters
+    val parts = mutableListOf<String>()
+    parts += s.panelQuery.ifBlank { f.regions.joinToString(", ").ifBlank { stringResource(R.string.all_mauritius) } }
+    f.type?.let { parts += stringResource(when (it) { "land" -> R.string.type_land; "apartment" -> R.string.type_apartment; else -> R.string.type_house }) }
+    if (f.type != "land") f.minBedrooms?.let { parts += stringResource(R.string.bedrooms_min, it) }
+    f.budgetBand?.let { parts += Budgets.label(s.display.currency, it, stringResource(R.string.budget_under)) }
+    f.plotBand?.let { i -> parts += "≥ " + Format.area(mu.propertyfinder.domain.Units.toM2(plotBands.getValue(s.display.plotUnit)[i], s.display.plotUnit), s.display.plotUnit, unitLabels()) }
+    if (f.foreign) parts += stringResource(R.string.foreigners_can_buy)
+    return parts.joinToString(" · ")
 }
