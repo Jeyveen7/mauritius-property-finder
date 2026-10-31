@@ -12,6 +12,7 @@ searching, map grouping and cost estimates locally. Host the folder anywhere sta
 (GitHub Pages via .github/workflows/data.yml, or bundled into the app).
 """
 
+import csv
 import gzip
 import hashlib
 import json
@@ -31,6 +32,9 @@ ATTRIBUTION = [
     official.ATTRIBUTION,
 ]
 FORMAT = 1
+# Each village's name in lexpressproperty.com search links ("Search everywhere" in the apps).
+# Only link parameters, checked against the site's own town list; nothing is copied from it.
+LEXPRESS_CITIES = Path(__file__).resolve().parents[1] / "seed" / "lexpress_cities.csv"
 
 
 def _default(o):
@@ -76,11 +80,14 @@ def export(conn: psycopg.Connection, out: Path, public_base_url: str = "") -> di
         properties.append(d)
     properties.sort(key=lambda p: p["id"])
 
+    with open(LEXPRESS_CITIES, newline="", encoding="utf-8") as f:
+        lexpress = {r["locality"]: r["lexpress_city"] for r in csv.DictReader(f)}
     localities = []
     for loc in conn.execute("SELECT * FROM locality ORDER BY name").fetchall():
         localities.append({"name": loc["name"], "district": loc["district"], "region": loc["region"],
                            "lat": loc["lat"], "lon": loc["lon"], "aliases": loc["aliases"],
                            "search_text": loc["search_text"] or norm(loc["name"]),
+                           "lexpress_city": lexpress.get(loc["name"]),
                            "area_photos": area_photos(conn, loc["id"])})
 
     props_raw = _write_gz(out / "properties.json.gz", properties)

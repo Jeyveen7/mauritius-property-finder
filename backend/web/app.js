@@ -321,6 +321,54 @@ $("#sheet").addEventListener("click", (e) => {
   refresh(); openFilters();
 });
 
+// --- Search everywhere -------------------------------------------------------
+// The same search on the listing sites and social networks, as links. Linking is all this
+// does: nothing is copied from those sites, and the listings open on the sites themselves.
+const REGION_FR = { North: "Nord", West: "Ouest", Centre: "Centre", East: "Est", South: "Sud" };
+
+/** Mirrors the Android domain/Elsewhere.kt. */
+function elsewhereLinks() {
+  const f = state.filters, cf = currentFilters(), q = norm(f.q);
+  const loc = q ? state.data?.localities.find((l) => norm(l.name) === q || l.aliases.some((a) => norm(a) === q)) : null;
+  const region = loc?.region ?? (f.regions.size === 1 ? [...f.regions][0] : null);
+  const place = loc?.name ?? (q ? f.q.trim() : region ? REGION_FR[region] : "");
+  const mur = (whole) => (whole == null ? null : Math.round(convert({ minor: whole * 100, currency: cf.currency }, "MUR").minor / 100));
+  const lo = mur(cf.min_price), hi = mur(cf.max_price);
+  const text = `${{ land: "terrain", house: "maison", apartment: "appartement" }[f.type] ?? "immobilier"} à vendre ${place} Maurice`.replace(/\s+/g, " ");
+  const url = (base, params = {}) => {
+    const u = new URL(base);
+    for (const [k, v] of Object.entries(params)) if (v != null && v !== "") u.searchParams.set(k, v);
+    return u.href;
+  };
+  const lexTypes = { land: "residential_land-agricultural_land", apartment: "apartment-penthouse", house: "villa-townhouse_duplex" }[f.type]
+    ?? "villa-townhouse_duplex-apartment-penthouse-residential_land";
+  const pcType = { land: "land", apartment: "apartments", house: "houses" }[f.type] ?? "property";
+  return [
+    { name: "lexpressproperty.com", note: t("ew_filters"),
+      url: url(`https://www.lexpressproperty.com/en/buy-mauritius/${lexTypes}/`, { city: loc?.lexpress_city ?? region?.toLowerCase(),
+        price_min: lo, price_max: hi, currency: lo || hi ? "MUR" : null, foreigners: f.foreign ? "yes" : null }) },
+    { name: "PropertyCloud", note: t("ew_region"),
+      url: `https://www.propertycloud.mu/${pcType}-for-sale${region ? "/" + region.toLowerCase() : ""}${f.foreign ? "/foreigners" : ""}` },
+    { name: "Westimmo", note: t("ew_type"),
+      url: f.type === "land" ? "https://real-estate-mauritius.mu/en/buy-invest-mauritius/land-for-sale" : "https://real-estate-mauritius.mu/en/buy-property-mauritius/" },
+    { name: t("ew_fb_posts"), note: t("ew_text", { q: text }), url: url("https://www.facebook.com/search/posts/", { q: text }) },
+    { name: "Facebook Marketplace", note: t("ew_text", { q: text }), url: url("https://www.facebook.com/marketplace/search/", { query: text }) },
+    { name: "Instagram", note: t("ew_text", { q: text }), url: url("https://www.instagram.com/explore/search/keyword/", { q: text }) },
+    { name: "Google", note: t("ew_text", { q: text }), url: url("https://www.google.com/search", { q: text }) },
+  ];
+}
+function openElsewhere() {
+  const s = $("#sheet");
+  s.innerHTML = `<div class="inner">
+    <div class="row" style="align-items:center"><h2 style="margin:0;flex:1">${t("everywhere")}</h2><button class="btn secondary" data-close>${t("close")}</button></div>
+    <div class="muted">${t("everywhere_intro")}</div>
+    ${elsewhereLinks().map((l) => `<a class="panel elsewhere" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">
+      <strong>${esc(l.name)} ↗</strong><span class="muted">${esc(l.note)}</span></a>`).join("")}
+    <div class="muted">${t("everywhere_add")}</div></div>`;
+  if (!s.open) s.showModal();
+}
+$("#elsewhere").onclick = openElsewhere;
+
 // --- Detail ---------------------------------------------------------------
 
 function eligibilityText(e) {

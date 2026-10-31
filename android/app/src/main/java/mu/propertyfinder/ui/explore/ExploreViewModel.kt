@@ -19,6 +19,7 @@ import mu.propertyfinder.data.SearchFilters
 import mu.propertyfinder.data.card
 import mu.propertyfinder.domain.Budgets
 import mu.propertyfinder.domain.Converter
+import mu.propertyfinder.domain.Elsewhere
 import mu.propertyfinder.domain.Search
 import mu.propertyfinder.domain.Units
 import mu.propertyfinder.domain.norm
@@ -77,6 +78,7 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
 
     private var all: List<Detail> = emptyList()
     private var projects: List<Project> = emptyList()
+    private var localities: List<mu.propertyfinder.data.Locality> = emptyList()
     private var openedOnProjects = false
     private var viewport: Pair<DoubleArray, Double>? = null
 
@@ -89,6 +91,7 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
             }.collect { (snap, mine, hidden) ->
                 all = ((snap?.properties ?: emptyList()) + mine).filter { it.id !in hidden }
                 projects = snap?.projects.orEmpty()
+                localities = snap?.localities.orEmpty()
                 // Until listing sources join, open on the official projects rather than an empty map.
                 val startOnProjects = snap != null && !openedOnProjects && all.isEmpty() && projects.isNotEmpty()
                 if (snap != null) openedOnProjects = true
@@ -207,6 +210,15 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
     fun closeStack() {
         _state.update { it.copy(stackIds = null) }
         recompute()
+    }
+
+    /** The current search as links to other sites ("Search everywhere"). */
+    fun elsewhere(): List<Elsewhere.Link> {
+        val q = query()
+        return Elsewhere.links(
+            Elsewhere.Query(q.type, state.value.filters.q, q.regions, q.minPrice, q.maxPrice, q.currency, q.foreignEligible),
+            localities, { it.lexpressCity }, converter,
+        )
     }
 
     fun saveSearch() = viewModelScope.launch {

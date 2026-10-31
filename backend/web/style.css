@@ -72,3 +72,4 @@ dialog .inner { padding: 16px 18px calc(18px + var(--safe-b)); display: grid; ga
 textarea, .page input[type=text], .page input:not([type]) { width: 100%; font: inherit; padding: 10px 12px; border: 1px solid #D3DAD8; border-radius: 12px; }
 h1 { font-size: 24px; margin: 0 0 6px; }
 #toast { position: fixed; z-index: 50; left: 16px; right: 16px; top: 16px; max-width: 520px; margin: 0 auto; background: var(--ink); color: #fff; padding: 12px 16px; border-radius: 12px; font-weight: 600; }
+.elsewhere { display: grid; gap: 2px; text-decoration: none; color: inherit; }

@@ -101,4 +101,20 @@ class SearchTest {
         assertEquals(listOf("PDS", "PDS"), pins.map { it.scheme })
         assertEquals("Grand Baie · D", list[0].place)
     }
+
+    @Test fun searchEverywhereLinksCarryTheFilters() {
+        val gb = Locality("Grand Baie", "Rivière du Rempart", "North", -20.0, 57.58, lexpressCity = "grand_baie")
+        val q = Elsewhere.Query("land", "grand baie", emptyList(), "5000000", "15000000", "MUR", foreign = true)
+        val links = Elsewhere.links(q, listOf(gb), { it.lexpressCity }, Converter(null)).associateBy { it.site }
+        assertEquals("https://www.lexpressproperty.com/en/buy-mauritius/residential_land-agricultural_land/" +
+                     "?city=grand_baie&price_min=5000000&price_max=15000000&currency=MUR&foreigners=yes",
+                     links.getValue("lexpressproperty.com").url)
+        assertEquals("https://www.propertycloud.mu/land-for-sale/north/foreigners", links.getValue("PropertyCloud").url)
+        assertEquals("terrain à vendre Grand Baie Maurice", links.getValue("Google").text)
+        assertEquals("https://www.google.com/search?q=terrain+%C3%A0+vendre+Grand+Baie+Maurice", links.getValue("Google").url)
+        // No town or region: the whole island, and a plain text search.
+        val any = Elsewhere.links(Elsewhere.Query(null, "", emptyList(), null, null, "MUR", false), emptyList(), { null }, Converter(null))
+        assertEquals("https://www.propertycloud.mu/property-for-sale", any.first { it.site == "PropertyCloud" }.url)
+        assertEquals("immobilier à vendre Maurice", any.first { it.site == "Instagram" }.text)
+    }
 }

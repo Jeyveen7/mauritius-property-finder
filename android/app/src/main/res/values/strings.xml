@@ -180,4 +180,11 @@
     <string name="project_source_note">Economic Development Board, Mauritius: public list of approved projects. Contact details in the list aren\'t copied here; use the developer\'s website.</string>
     <string name="open_edb">Open the EDB list (PDF)</string>
     <string name="eligible_yes">Yes</string>
+    <string name="everywhere">Search everywhere</string>
+    <string name="everywhere_intro">Opens this search on each site. The listings are theirs, not checked by us: compare and contact the seller there.</string>
+    <string name="everywhere_add">Found one you like? Share the post to this app (or copy it into Add a post) to keep it on your map.</string>
+    <string name="ew_filters">Type, town, budget and foreigners applied</string>
+    <string name="ew_region">Type, region and foreigners applied</string>
+    <string name="ew_type">Type applied; filter on the site</string>
+    <string name="ew_text">Searches “%1$s”</string>
 </resources>

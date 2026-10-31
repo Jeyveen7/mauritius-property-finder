@@ -180,4 +180,11 @@
     <string name="project_source_note">Economic Development Board, Maurice : liste publique des projets agréés. Les coordonnées de la liste ne sont pas reprises ici ; passez par le site du promoteur.</string>
     <string name="open_edb">Ouvrir la liste de l\'EDB (PDF)</string>
     <string name="eligible_yes">Oui</string>
+    <string name="everywhere">Chercher partout</string>
+    <string name="everywhere_intro">Ouvre cette recherche sur chaque site. Les annonces sont les leurs, non vérifiées par nous : comparez et contactez le vendeur là-bas.</string>
+    <string name="everywhere_add">Une annonce vous plaît ? Partagez-la vers cette appli (ou copiez-la dans Ajouter une annonce) pour la garder sur votre carte.</string>
+    <string name="ew_filters">Type, ville, budget et étrangers appliqués</string>
+    <string name="ew_region">Type, région et étrangers appliqués</string>
+    <string name="ew_type">Type appliqué ; affinez sur le site</string>
+    <string name="ew_text">Recherche « %1$s »</string>
 </resources>

@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.BadgedBox
@@ -73,6 +74,14 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
     val s by vm.state.collectAsStateWithLifecycle()
     val converter = remember(s.fx) { Converter(s.fx) }
     var sheetOpen by remember { mutableStateOf(false) }
+    var elsewhereOpen by remember { mutableStateOf(false) }
+    val elsewhereButton = @Composable {
+        Surface(shape = RoundedCornerShape(50), shadowElevation = 6.dp) {
+            IconButton(onClick = { elsewhereOpen = true }) {
+                Icon(Icons.Filled.Public, contentDescription = stringResource(R.string.everywhere))
+            }
+        }
+    }
     val context = LocalContext.current
     // Alerts for saved searches arrive as notifications; Android 13+ asks for permission.
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -172,6 +181,7 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
             }
             if (s.view == ExploreView.MAP) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    elsewhereButton()
                     if (!s.filters.projects) Surface(shape = RoundedCornerShape(50), shadowElevation = 6.dp) {
                         IconButton(onClick = { saveSearch() }) {
                             Icon(Icons.Filled.NotificationsNone, contentDescription = stringResource(R.string.save_search))
@@ -201,17 +211,23 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
                     }
                 }
             } else {
-                ExtendedFloatingActionButton(
-                    onClick = { vm.setView(ExploreView.MAP) },
-                    icon = { Icon(Icons.Filled.Map, null) }, text = { Text(stringResource(R.string.map)) },
-                    containerColor = Color(0xFF12201F), contentColor = Color.White,
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    elsewhereButton()
+                    ExtendedFloatingActionButton(
+                        onClick = { vm.setView(ExploreView.MAP) },
+                        icon = { Icon(Icons.Filled.Map, null) }, text = { Text(stringResource(R.string.map)) },
+                        containerColor = Color(0xFF12201F), contentColor = Color.White,
+                    )
+                }
             }
         }
     }
 
     if (sheetOpen) {
         FilterSheet(state = s, vm = vm, onDismiss = { sheetOpen = false })
+    }
+    if (elsewhereOpen) {
+        ElsewhereSheet(links = vm.elsewhere(), onDismiss = { elsewhereOpen = false })
     }
 }
 
