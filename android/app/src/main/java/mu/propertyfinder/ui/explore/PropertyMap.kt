@@ -47,6 +47,7 @@ fun PropertyMap(
     onViewport: (bbox: String, zoom: Double) -> Unit,
     onPin: (String) -> Unit,
     onStack: (List<String>) -> Unit,
+    focus: Pair<Double, Double>? = null,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -143,6 +144,11 @@ fun PropertyMap(
         }
         mapView
     }, modifier = modifier)
+
+    LaunchedEffect(focus, style) {
+        val (lat, lon) = focus ?: return@LaunchedEffect
+        map?.takeIf { style != null }?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), 13.0))
+    }
 
     LaunchedEffect(items, style) {
         val s = style ?: return@LaunchedEffect

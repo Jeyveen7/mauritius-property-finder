@@ -76,6 +76,8 @@ data class ExploreState(
     /** The town or words the panel searched for: set on a known town or the keyboard's Search key. */
     val panelQuery: String = "",
     val panelLinks: List<Elsewhere.Link> = emptyList(),
+    /** Where the map flies when a town is searched: lat, lon. */
+    val focus: Pair<Double, Double>? = null,
 )
 
 class ExploreViewModel(app: Application) : AndroidViewModel(app) {
@@ -200,8 +202,10 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
     /** The keyboard's Search key, or a known town typed in full. */
     fun commitSearch() {
         val q = state.value.filters.q.trim()
+        val nq = norm(q)
+        val town = if (nq.isEmpty()) null else localities.firstOrNull { l -> norm(l.name) == nq || l.aliases.any { norm(it) == nq } }
         _state.update {
-            it.copy(panelQuery = q, panel = when {
+            it.copy(panelQuery = q, focus = town?.let { t -> t.lat to t.lon } ?: it.focus, panel = when {
                 q.isNotEmpty() -> Panel.OPEN
                 it.filters.activeCount > 0 -> if (it.panel == Panel.HIDDEN) Panel.BAR else it.panel
                 else -> Panel.HIDDEN

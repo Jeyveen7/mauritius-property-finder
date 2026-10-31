@@ -113,6 +113,7 @@ fun ExploreScreen(onOpen: (String) -> Unit, onBrowse: (Int) -> Unit, onSave: (St
                 onViewport = vm::onViewport,
                 onPin = { vm.select(it) },
                 onStack = vm::openStack,
+                focus = s.focus,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
@@ -206,7 +207,8 @@ fun ExploreScreen(onOpen: (String) -> Unit, onBrowse: (Int) -> Unit, onSave: (St
                     }
                 }
             }
-            if (s.view == ExploreView.MAP && s.loaded && s.count == 0) {
+            // With the other sites' panel on offer, it already answers "nothing here".
+            if (s.view == ExploreView.MAP && s.loaded && s.count == 0 && s.panel == Panel.HIDDEN) {
                 Surface(shape = RoundedCornerShape(16.dp), shadowElevation = 4.dp) {
                     Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(stringResource(R.string.no_results))
