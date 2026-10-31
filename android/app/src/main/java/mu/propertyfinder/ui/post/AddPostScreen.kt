@@ -51,7 +51,9 @@ fun AddPostScreen(shared: SharedContent?, onSharedConsumed: () -> Unit, onPublis
 
     LaunchedEffect(shared) {
         shared ?: return@LaunchedEffect
+        if (shared.read) vm.reset()  // a page saved from the browser starts a fresh post
         vm.appendShared(shared.text)
+        if (shared.read) vm.read()
         shared.image?.let(vm::readScreenshot)
         onSharedConsumed()
     }

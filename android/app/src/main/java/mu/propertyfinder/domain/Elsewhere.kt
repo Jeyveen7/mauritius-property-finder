@@ -14,7 +14,11 @@ object Elsewhere {
     /** What each link can apply of the user's filters, shown under its name. */
     enum class Applies { FILTERS, REGION, TYPE, TEXT }
 
-    data class Link(val site: String, val applies: Applies, val url: String, val text: String = "")
+    /**
+     * [inApp] sites open in the app's own browser (with "Save to my map"); Facebook and
+     * Instagram open in their apps, where you sign in, and posts come back via Share.
+     */
+    data class Link(val site: String, val applies: Applies, val url: String, val text: String = "", val inApp: Boolean = true)
 
     data class Query(
         val type: String?,
@@ -66,10 +70,10 @@ object Elsewhere {
             Link("Westimmo", Applies.TYPE,
                  if (query.type == "land") "https://real-estate-mauritius.mu/en/buy-invest-mauritius/land-for-sale"
                  else "https://real-estate-mauritius.mu/en/buy-property-mauritius/"),
-            Link("Facebook", Applies.TEXT, url("https://www.facebook.com/search/posts/", listOf("q" to text)), text),
-            Link("Facebook Marketplace", Applies.TEXT, url("https://www.facebook.com/marketplace/search/", listOf("query" to text)), text),
-            Link("Instagram", Applies.TEXT, url("https://www.instagram.com/explore/search/keyword/", listOf("q" to text)), text),
             Link("Google", Applies.TEXT, url("https://www.google.com/search", listOf("q" to text)), text),
+            Link("Facebook", Applies.TEXT, url("https://www.facebook.com/search/posts/", listOf("q" to text)), text, inApp = false),
+            Link("Facebook Marketplace", Applies.TEXT, url("https://www.facebook.com/marketplace/search/", listOf("query" to text)), text, inApp = false),
+            Link("Instagram", Applies.TEXT, url("https://www.instagram.com/explore/search/keyword/", listOf("q" to text)), text, inApp = false),
         )
     }
 }

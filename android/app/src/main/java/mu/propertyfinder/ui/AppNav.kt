@@ -26,6 +26,7 @@ import mu.propertyfinder.R
 import mu.propertyfinder.SharedContent
 import mu.propertyfinder.ui.detail.DetailScreen
 import mu.propertyfinder.ui.detail.ProjectScreen
+import mu.propertyfinder.ui.explore.BrowseScreen
 import mu.propertyfinder.ui.explore.ExploreScreen
 import mu.propertyfinder.ui.post.AddPostScreen
 import mu.propertyfinder.ui.saved.SavedScreen
@@ -42,6 +43,7 @@ private val tabs = listOf(
 fun AppNav(
     sharedContent: StateFlow<SharedContent?>,
     onSharedConsumed: () -> Unit,
+    onShare: (SharedContent) -> Unit,
     openProperty: StateFlow<String?>,
     onOpenConsumed: () -> Unit,
 ) {
@@ -64,7 +66,7 @@ fun AppNav(
 
     Scaffold(
         bottomBar = {
-            if (route?.startsWith("property") != true) {
+            if (route?.startsWith("property") != true && route?.startsWith("browse") != true) {
                 NavigationBar {
                     tabs.forEach { tab ->
                         NavigationBarItem(
@@ -80,7 +82,11 @@ fun AppNav(
     ) { padding ->
         NavHost(nav, startDestination = "explore", modifier = Modifier.padding(padding)) {
             val open: (String) -> Unit = { id -> nav.navigate("property/$id") }
-            composable("explore") { ExploreScreen(onOpen = open) }
+            composable("explore") { ExploreScreen(onOpen = open, onBrowse = { i -> nav.navigate("browse/$i") }) }
+            composable("browse/{index}") { backStack ->
+                BrowseScreen(start = backStack.arguments!!.getString("index")!!.toInt(), onClose = { nav.popBackStack() },
+                             onSave = { text -> onShare(SharedContent(text, null, read = true)) })
+            }
             composable("saved") { SavedScreen(onOpen = open, onApplySearch = { go("explore") }) }
             composable("post") {
                 AddPostScreen(shared = shared, onSharedConsumed = onSharedConsumed, onPublished = open)

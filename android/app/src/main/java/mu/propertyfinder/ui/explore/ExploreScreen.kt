@@ -69,7 +69,7 @@ import mu.propertyfinder.ui.PropertyCardRow
 fun exploreViewModel(): ExploreViewModel = viewModel(LocalContext.current as ComponentActivity)
 
 @Composable
-fun ExploreScreen(onOpen: (String) -> Unit) {
+fun ExploreScreen(onOpen: (String) -> Unit, onBrowse: (Int) -> Unit) {
     val vm = exploreViewModel()
     val s by vm.state.collectAsStateWithLifecycle()
     val converter = remember(s.fx) { Converter(s.fx) }
@@ -227,7 +227,8 @@ fun ExploreScreen(onOpen: (String) -> Unit) {
         FilterSheet(state = s, vm = vm, onDismiss = { sheetOpen = false })
     }
     if (elsewhereOpen) {
-        ElsewhereSheet(links = vm.elsewhere(), onDismiss = { elsewhereOpen = false })
+        ElsewhereSheet(links = vm.elsewhere(), onDismiss = { elsewhereOpen = false },
+                       onBrowse = { i -> elsewhereOpen = false; onBrowse(i) })
     }
 }
 

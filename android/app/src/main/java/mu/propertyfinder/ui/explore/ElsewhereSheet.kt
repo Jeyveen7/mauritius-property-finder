@@ -29,20 +29,21 @@ import mu.propertyfinder.domain.Elsewhere
 /** "Search everywhere": opens the current search on each site, in the browser or the site's app. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ElsewhereSheet(links: List<Elsewhere.Link>, onDismiss: () -> Unit) {
+fun ElsewhereSheet(links: List<Elsewhere.Link>, onDismiss: () -> Unit, onBrowse: (Int) -> Unit) {
     val context = LocalContext.current
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp, 0.dp, 16.dp, 24.dp),
                verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(stringResource(R.string.everywhere), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
             Text(stringResource(R.string.everywhere_intro), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            links.forEach { link ->
+            links.forEachIndexed { i, link ->
                 Surface(shape = RoundedCornerShape(14.dp), color = Color.White, shadowElevation = 1.dp,
                         modifier = Modifier.fillMaxWidth().clickable {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link.url)))
+                            if (link.inApp) onBrowse(i)
+                            else context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link.url)))
                         }) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("${link.site} ↗", fontWeight = FontWeight.Bold)
+                        Text(if (link.inApp) link.site else "${link.site} ↗", fontWeight = FontWeight.Bold)
                         Text(
                             when (link.applies) {
                                 Elsewhere.Applies.FILTERS -> stringResource(R.string.ew_filters)

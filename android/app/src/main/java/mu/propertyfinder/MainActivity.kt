@@ -13,8 +13,11 @@ import mu.propertyfinder.alerts.EXTRA_PROPERTY_ID
 import mu.propertyfinder.ui.AppNav
 import mu.propertyfinder.ui.PropertyFinderTheme
 
-/** Something shared into the app from another app's Share menu. */
-data class SharedContent(val text: String?, val image: Uri?)
+/**
+ * Something shared into the app from another app's Share menu, or saved from the in-app
+ * browser ([read]: go straight to checking the facts found in it).
+ */
+data class SharedContent(val text: String?, val image: Uri?, val read: Boolean = false)
 
 class MainActivity : ComponentActivity() {
     private val shared = MutableStateFlow<SharedContent?>(null)
@@ -29,6 +32,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             PropertyFinderTheme {
                 AppNav(sharedContent = sharedContent, onSharedConsumed = { shared.value = null },
+                       onShare = { shared.value = it },
                        openProperty = openProperty, onOpenConsumed = { openProperty.value = null })
             }
         }

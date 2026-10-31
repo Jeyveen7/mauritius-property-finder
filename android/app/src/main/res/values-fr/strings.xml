@@ -159,9 +159,9 @@
     <string name="hidden_on_phone">Masqué sur ce téléphone.</string>
     <string name="my_listings">Annonces que j\'ai ajoutées</string>
     <string name="post_added_local">Ajoutée à votre carte sur ce téléphone.</string>
-    <string name="mine_plot">Terrain d\'une publication partagée</string>
-    <string name="mine_apartment">Appartement d\'une publication partagée</string>
-    <string name="mine_house">Maison d\'une publication partagée</string>
+    <string name="mine_plot">Terrain que j\'ai gardé</string>
+    <string name="mine_apartment">Appartement que j\'ai gardé</string>
+    <string name="mine_house">Maison que j\'ai gardée</string>
     <string name="shared_by_you">Partagé par vous</string>
     <string name="data_date">Annonces mises à jour le %1$s</string>
     <plurals name="alert_new_matches">
@@ -187,4 +187,8 @@
     <string name="ew_region">Type, région et étrangers appliqués</string>
     <string name="ew_type">Type appliqué ; affinez sur le site</string>
     <string name="ew_text">Recherche « %1$s »</string>
+    <string name="save_to_map">Garder sur ma carte</string>
+    <string name="open_in_browser">Ouvrir dans le navigateur</string>
+    <string name="browse_nothing">Rien à garder sur cette page. Ouvrez d\'abord une annonce.</string>
+    <string name="detail_mine">Vous l\'avez gardée depuis une publication ou un site ; nous ne l\'avons pas vérifiée. Demandez le titre de propriété et le plan d\'arpenteur avant tout paiement.</string>
 </resources>

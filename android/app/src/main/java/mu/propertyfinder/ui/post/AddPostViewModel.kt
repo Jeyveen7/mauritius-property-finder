@@ -127,6 +127,9 @@ class AddPostViewModel(private val app: Application) : AndroidViewModel(app) {
         val m2 = Units.toM2(size, d.sizeUnit)
         val now = OffsetDateTime.now().toString()
         val money = Money(price * 100, d.currency)
+        // Keep a link back to the original post or advert, named after its site.
+        val link = URL.find(s.text)?.value
+        val sourceName = link?.let { Uri.parse(it).host?.removePrefix("www.") } ?: app.getString(R.string.shared_by_you)
         val listing = Detail(
             id = id, type = d.type,
             title = app.getString(when (d.type) { "apartment" -> R.string.mine_apartment; "house" -> R.string.mine_house; else -> R.string.mine_plot }),
@@ -135,9 +138,8 @@ class AddPostViewModel(private val app: Application) : AndroidViewModel(app) {
             plotM2 = if (d.sizeIsPlot) m2 else null, floorM2 = if (d.sizeIsPlot) null else m2,
             negotiable = d.negotiable, verified = false, firstSeenAt = now, lastCheckedAt = now,
             searchText = place.searchText, thumb = photos.firstOrNull()?.url, photos = photos, mine = true,
-            // Keep a link back to the original post when the shared text contained one.
-            sources = listOf(SourceEntry(id, app.getString(R.string.shared_by_you), "user_post",
-                                         url = URL.find(s.text)?.value, price = money, firstSeenAt = now,
+            sources = listOf(SourceEntry(id, sourceName, "user_post",
+                                         url = link, price = money, firstSeenAt = now,
                                          lastCheckedAt = now, verified = false)),
         )
         a.local.addMine(listing)

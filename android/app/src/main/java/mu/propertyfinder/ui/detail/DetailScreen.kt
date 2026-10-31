@@ -149,16 +149,19 @@ fun DetailScreen(id: String, onBack: () -> Unit) {
                     }
                 }
 
-                if (!d.verified) Panel(WarnBg) { Text(stringResource(R.string.detail_unverified), color = WarnFg) }
+                if (!d.verified) Panel(WarnBg) {
+                    Text(stringResource(if (d.mine) R.string.detail_mine else R.string.detail_unverified), color = WarnFg)
+                }
 
                 d.eligibility?.let { EligibilityPanel(it) }
 
                 Panel {
                     Fact(stringResource(R.string.facts_size), sizeText(d.type, d.plotM2, d.floorM2, d.bedrooms, s.display))
-                    Fact(stringResource(R.string.facts_coast),
+                    // Listings you saved are placed at the village centre and never rechecked.
+                    if (!d.mine) Fact(stringResource(R.string.facts_coast),
                          stringResource(R.string.km, "%.1f".format(d.coastDistanceM / 1000)) + " · " +
                              stringResource(R.string.straight_line))
-                    d.lastCheckedAt?.let { Fact(stringResource(R.string.facts_checked), stringResource(R.string.checked_ago, ago(it))) }
+                    if (!d.mine) d.lastCheckedAt?.let { Fact(stringResource(R.string.facts_checked), stringResource(R.string.checked_ago, ago(it))) }
                 }
 
                 if (s.areaPhotos.isNotEmpty()) Panel {
