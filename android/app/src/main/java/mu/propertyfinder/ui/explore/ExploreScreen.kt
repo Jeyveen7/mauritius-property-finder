@@ -52,6 +52,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -69,7 +77,7 @@ import mu.propertyfinder.ui.PropertyCardRow
 fun exploreViewModel(): ExploreViewModel = viewModel(LocalContext.current as ComponentActivity)
 
 @Composable
-fun ExploreScreen(onOpen: (String) -> Unit, onBrowse: (Int) -> Unit) {
+fun ExploreScreen(onOpen: (String) -> Unit, onBrowse: (Int) -> Unit, onSave: (String) -> Unit) {
     val vm = exploreViewModel()
     val s by vm.state.collectAsStateWithLifecycle()
     val converter = remember(s.fx) { Converter(s.fx) }
@@ -149,7 +157,7 @@ fun ExploreScreen(onOpen: (String) -> Unit, onBrowse: (Int) -> Unit) {
         }
 
         SearchHeader(
-            query = s.filters.q, onQuery = vm::setQuery, activeFilters = s.filters.activeCount,
+            query = s.filters.q, onQuery = vm::setQuery, onSearch = vm::commitSearch, activeFilters = s.filters.activeCount,
             onFilters = { sheetOpen = true },
             quickChips = {
                 val f = s.filters
@@ -169,8 +177,35 @@ fun ExploreScreen(onOpen: (String) -> Unit, onBrowse: (Int) -> Unit) {
             opaque = s.view == ExploreView.LIST,
         )
 
-        Column(Modifier.align(Alignment.BottomCenter).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally,
+        if (s.panel == Panel.OPEN) {
+            // The other sites' own results for this search, under the map. Their pages, unchanged.
+            Surface(shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp), shadowElevation = 12.dp,
+                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.66f)) {
+                SiteBrowser(s.panelLinks, 0, onSave, onBackOut = vm::collapsePanel, modifier = Modifier.fillMaxSize()) {
+                    IconButton(onClick = vm::collapsePanel) {
+                        Icon(Icons.Filled.ExpandMore, stringResource(R.string.panel_collapse))
+                    }
+                }
+            }
+        }
+
+        if (s.panel != Panel.OPEN) Column(Modifier.align(Alignment.BottomCenter).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally,
                verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (s.panel == Panel.BAR) {
+                Surface(shape = RoundedCornerShape(16.dp), shadowElevation = 6.dp, color = Color.White,
+                        modifier = Modifier.fillMaxWidth().clickable { vm.openPanel() }) {
+                    Row(Modifier.padding(start = 16.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Public, null, tint = MaterialTheme.colorScheme.primary)
+                        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                            Text(if (s.panelQuery.isBlank()) stringResource(R.string.panel_bar_any)
+                                 else stringResource(R.string.panel_bar, s.panelQuery), fontWeight = FontWeight.Bold)
+                            Text(s.panelLinks.filter { it.inApp }.joinToString(" · ") { it.site }, fontSize = 12.sp,
+                                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        }
+                        IconButton(onClick = vm::closePanel) { Icon(Icons.Filled.Close, stringResource(R.string.panel_hide)) }
+                    }
+                }
+            }
             if (s.view == ExploreView.MAP && s.loaded && s.count == 0) {
                 Surface(shape = RoundedCornerShape(16.dp), shadowElevation = 4.dp) {
                     Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -236,11 +271,13 @@ fun ExploreScreen(onOpen: (String) -> Unit, onBrowse: (Int) -> Unit) {
 private fun SearchHeader(
     query: String,
     onQuery: (String) -> Unit,
+    onSearch: () -> Unit,
     activeFilters: Int,
     onFilters: () -> Unit,
     quickChips: @Composable () -> Unit,
     opaque: Boolean,
 ) {
+    val focus = LocalFocusManager.current
     Surface(color = if (opaque) MaterialTheme.colorScheme.background else Color.Transparent) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
                verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -248,6 +285,8 @@ private fun SearchHeader(
                 Surface(shape = RoundedCornerShape(14.dp), shadowElevation = 3.dp, modifier = Modifier.weight(1f)) {
                     TextField(
                         value = query, onValueChange = onQuery, singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { onSearch(); focus.clearFocus() }),
                         leadingIcon = { Icon(Icons.Filled.Search, null) },
                         placeholder = { Text(stringResource(R.string.search_hint)) },
                         colors = TextFieldDefaults.colors(

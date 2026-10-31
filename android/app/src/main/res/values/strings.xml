@@ -191,4 +191,8 @@
     <string name="open_in_browser">Open in browser</string>
     <string name="browse_nothing">Nothing to save on this page. Open a listing first.</string>
     <string name="detail_mine">You saved this from a post or a website; we haven\'t checked it. Ask for the title deed and a surveyor\'s plan before you pay anything.</string>
+    <string name="panel_bar">%1$s on other sites</string>
+    <string name="panel_bar_any">Your search on other sites</string>
+    <string name="panel_collapse">Show the map</string>
+    <string name="panel_hide">Hide</string>
 </resources>

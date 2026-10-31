@@ -191,4 +191,8 @@
     <string name="open_in_browser">Ouvrir dans le navigateur</string>
     <string name="browse_nothing">Rien à garder sur cette page. Ouvrez d\'abord une annonce.</string>
     <string name="detail_mine">Vous l\'avez gardée depuis une publication ou un site ; nous ne l\'avons pas vérifiée. Demandez le titre de propriété et le plan d\'arpenteur avant tout paiement.</string>
+    <string name="panel_bar">%1$s sur les autres sites</string>
+    <string name="panel_bar_any">Votre recherche sur les autres sites</string>
+    <string name="panel_collapse">Afficher la carte</string>
+    <string name="panel_hide">Masquer</string>
 </resources>

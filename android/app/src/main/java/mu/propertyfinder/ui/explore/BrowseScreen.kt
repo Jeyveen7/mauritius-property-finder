@@ -30,6 +30,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +45,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import mu.propertyfinder.R
+import mu.propertyfinder.domain.Elsewhere
 
 /**
  * The listing sites, browsed inside the app: their own pages, unchanged, with their branding
@@ -51,12 +53,32 @@ import mu.propertyfinder.R
  * map" reads only the page the user is looking at, when they tap it, and the user checks the
  * facts before the listing is kept on their phone (Add a post).
  */
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun BrowseScreen(start: Int, onClose: () -> Unit, onSave: (String) -> Unit) {
-    val context = LocalContext.current
     val vm = exploreViewModel()
-    val sites = remember { vm.elsewhere().withIndex().filter { it.value.inApp } }
+    val links = remember { vm.elsewhere() }
+    SiteBrowser(links, start, onSave, onBackOut = onClose, modifier = Modifier.fillMaxSize()) {
+        IconButton(onClick = onClose) { Icon(Icons.Filled.Close, stringResource(R.string.back)) }
+    }
+}
+
+/**
+ * Tabs for the in-app sites, their page, and the Save bar. Used full screen and in the
+ * results panel under the search. When [links] change (a new town or filter), the current
+ * site reloads with the new search.
+ */
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+fun SiteBrowser(
+    links: List<Elsewhere.Link>,
+    start: Int,
+    onSave: (String) -> Unit,
+    onBackOut: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    leading: @Composable () -> Unit,
+) {
+    val context = LocalContext.current
+    val sites = links.withIndex().filter { it.value.inApp }
     var current by remember { mutableIntStateOf(start) }
     var loading by remember { mutableStateOf(true) }
     var canGoBack by remember { mutableStateOf(false) }
@@ -82,21 +104,21 @@ fun BrowseScreen(start: Int, onClose: () -> Unit, onSave: (String) -> Unit) {
                     canGoBack = view.canGoBack()
                 }
             }
-            loadUrl(vm.elsewhere()[start].url)
         }
     }
+    val currentUrl = links.getOrNull(current)?.url
+    LaunchedEffect(currentUrl) { currentUrl?.let(web::loadUrl) }
 
-    BackHandler { if (web.canGoBack()) web.goBack() else onClose() }
+    BackHandler(enabled = onBackOut != null) { if (web.canGoBack()) web.goBack() else onBackOut?.invoke() }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onClose) { Icon(Icons.Filled.Close, stringResource(R.string.back)) }
+            leading()
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(end = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 sites.forEach { (i, site) ->
                     FilterChip(selected = i == current, label = { Text(site.site) }, onClick = {
-                        current = i
-                        web.loadUrl(site.url)
+                        if (i == current) web.loadUrl(site.url) else current = i
                     })
                 }
             }

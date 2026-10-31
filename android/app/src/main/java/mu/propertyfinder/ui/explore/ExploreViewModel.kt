@@ -50,6 +50,9 @@ data class Filters(
 
 enum class ExploreView { MAP, LIST }
 
+/** The other-sites results panel under the search: hidden, a one-line bar, or open. */
+enum class Panel { HIDDEN, BAR, OPEN }
+
 data class ExploreState(
     val filters: Filters = Filters(),
     val display: DisplayPrefs = DisplayPrefs(),
@@ -69,6 +72,10 @@ data class ExploreState(
     val loaded: Boolean = false,
     val dataDate: String? = null,
     val searchSavedAt: Long = 0,
+    val panel: Panel = Panel.HIDDEN,
+    /** The town or words the panel searched for: set on a known town or the keyboard's Search key. */
+    val panelQuery: String = "",
+    val panelLinks: List<Elsewhere.Link> = emptyList(),
 )
 
 class ExploreViewModel(app: Application) : AndroidViewModel(app) {
@@ -161,7 +168,12 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun setFilters(f: Filters) {
-        _state.update { it.copy(filters = f, selected = null, selectedProject = null, stackIds = null) }
+        _state.update {
+            it.copy(filters = f, selected = null, selectedProject = null, stackIds = null,
+                    // A listing filter offers the other sites too; the panel follows every change.
+                    panel = if (it.panel == Panel.HIDDEN && f.activeCount > 0 && !f.projects) Panel.BAR else it.panel)
+        }
+        refreshPanel()
         recompute()
     }
 
@@ -179,7 +191,30 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
     fun setQuery(q: String) {
         _state.update { it.copy(filters = it.filters.copy(q = q)) }
         recompute()
+        // Typing a whole town name ("Vacoas") searches the other sites straight away.
+        val nq = norm(q)
+        if (nq.isNotEmpty() && localities.any { l -> norm(l.name) == nq || l.aliases.any { norm(it) == nq } }) commitSearch()
+        else if (q.isBlank()) commitSearch()
     }
+
+    /** The keyboard's Search key, or a known town typed in full. */
+    fun commitSearch() {
+        val q = state.value.filters.q.trim()
+        _state.update {
+            it.copy(panelQuery = q, panel = when {
+                q.isNotEmpty() -> Panel.OPEN
+                it.filters.activeCount > 0 -> if (it.panel == Panel.HIDDEN) Panel.BAR else it.panel
+                else -> Panel.HIDDEN
+            })
+        }
+        refreshPanel()
+    }
+
+    fun openPanel() = _state.update { it.copy(panel = Panel.OPEN) }.also { refreshPanel() }
+    fun collapsePanel() = _state.update { it.copy(panel = Panel.BAR) }
+    fun closePanel() = _state.update { it.copy(panel = Panel.HIDDEN) }
+
+    private fun refreshPanel() = _state.update { it.copy(panelLinks = elsewhere(it.panelQuery)) }
 
     fun setView(v: ExploreView) {
         _state.update { it.copy(view = v, selected = null) }
@@ -213,10 +248,10 @@ class ExploreViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** The current search as links to other sites ("Search everywhere"). */
-    fun elsewhere(): List<Elsewhere.Link> {
+    fun elsewhere(text: String = state.value.filters.q): List<Elsewhere.Link> {
         val q = query()
         return Elsewhere.links(
-            Elsewhere.Query(q.type, state.value.filters.q, q.regions, q.minPrice, q.maxPrice, q.currency, q.foreignEligible),
+            Elsewhere.Query(q.type, text, q.regions, q.minPrice, q.maxPrice, q.currency, q.foreignEligible),
             localities, { it.lexpressCity }, converter,
         )
     }

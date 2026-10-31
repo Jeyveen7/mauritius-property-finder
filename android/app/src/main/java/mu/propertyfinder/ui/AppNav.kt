@@ -82,10 +82,13 @@ fun AppNav(
     ) { padding ->
         NavHost(nav, startDestination = "explore", modifier = Modifier.padding(padding)) {
             val open: (String) -> Unit = { id -> nav.navigate("property/$id") }
-            composable("explore") { ExploreScreen(onOpen = open, onBrowse = { i -> nav.navigate("browse/$i") }) }
+            val saveFromSite: (String) -> Unit = { text -> onShare(SharedContent(text, null, read = true)) }
+            composable("explore") {
+                ExploreScreen(onOpen = open, onBrowse = { i -> nav.navigate("browse/$i") }, onSave = saveFromSite)
+            }
             composable("browse/{index}") { backStack ->
                 BrowseScreen(start = backStack.arguments!!.getString("index")!!.toInt(), onClose = { nav.popBackStack() },
-                             onSave = { text -> onShare(SharedContent(text, null, read = true)) })
+                             onSave = saveFromSite)
             }
             composable("saved") { SavedScreen(onOpen = open, onApplySearch = { go("explore") }) }
             composable("post") {
